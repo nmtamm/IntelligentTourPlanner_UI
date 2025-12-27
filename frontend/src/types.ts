@@ -1,7 +1,9 @@
 export interface CostItem {
   id: string;
-  amount: number;
+  amount: string;
   detail: string;
+  originalAmount: string; // always store the initial input
+  originalCurrency: 'USD' | 'VND'; // always store the initial currency
 }
 
 export interface Destination {
@@ -9,15 +11,14 @@ export interface Destination {
   name: string;
   address: string;
   costs: CostItem[];
-  lat: number;
-  lng: number;
-  imageUrl?: string;
-  rating?: number;
-  reviewCount?: number;
-  placeType?: string;
-  openHours?: string;
-  priceLevel?: number;
-  website?: string;
+  longitude: number;
+  latitude: number;
+}
+
+export interface RouteInstruction {
+  type: string;
+  modifier: string;
+  name: string;
 }
 
 export interface DayPlan {
@@ -25,4 +26,10 @@ export interface DayPlan {
   dayNumber: number;
   destinations: Destination[];
   optimizedRoute: Destination[];
+  routeDistanceKm?: number;
+  routeDurationMin?: number;
+  routeGeometry?: string;
+  routeInstructions?: RouteInstruction[][];
+  routeSegmentGeometries?: string[];
 }
+
