@@ -1,18 +1,27 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, } from "react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { DayPlan, Destination } from "../types";
 import { MapPin, Navigation, X, Map, List, Plus, Loader2, Search, Star, ExternalLink, Clock, DollarSign, Trash2 } from "lucide-react";
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvent, Polyline } from "react-leaflet";
+import 'leaflet/dist/leaflet.css';
+import polyline from '@mapbox/polyline';
+import { reverseGeocode } from "../utils/reverseGeocode";
+import { parseAmount } from "../utils/parseAmount";
 import { toast } from "sonner";
 import { t } from "../locales/translations";
 import { useThemeColors } from "../hooks/useThemeColors";
+import { handleSearch } from "../utils/serp";
 
 interface MapViewProps {
   days: DayPlan[];
   viewMode: 'single' | 'all' | 'route-guidance';
   selectedDayId: string;
-  onRouteGuidance: (from: Destination, to: Destination) => void;
+  onRouteGuidance: (day: DayPlan, idx: number) => void;
+  onMapClick?: (data: { latitude: number; longitude: number; name: string; address: string }) => void;
+  manualStepAction?: string | null;
+  onManualActionComplete?: () => void;
   resetMapView?: boolean;
   language: 'EN' | 'VI';
   mode?: 'custom' | 'view';
@@ -22,6 +31,28 @@ interface MapViewProps {
   onOptimizeRoute?: () => Promise<void>;
   isOptimizing?: boolean;
   onDestinationClick?: (destination: Destination) => void;
+  AICommand?: string | null;
+  AICommandPayload?: any;
+  onAIActionComplete?: () => void;
+}
+
+function FitBounds({ bounds }) {
+  const map = useMap();
+  React.useEffect(() => {
+    if (bounds) {
+      map.fitBounds(bounds, { padding: [50, 50] });
+    }
+  }, [bounds, map]);
+  return null;
+}
+
+function MapClickHandler({ onClick }) {
+  useMapEvent("click", async (e) => {
+    const { lat, lng } = e.latlng;
+    const { name, address } = await reverseGeocode(lat, lng);
+    onClick({ latitude: lat, longitude: lng, name, address });
+  });
+  return null;
 }
 
 export function MapView({
@@ -29,6 +60,9 @@ export function MapView({
   viewMode,
   selectedDayId,
   onRouteGuidance,
+  onMapClick,
+  manualStepAction,
+  onManualActionComplete,
   resetMapView,
   language,
   mode,
@@ -38,7 +72,12 @@ export function MapView({
   onOptimizeRoute,
   isOptimizing,
   onDestinationClick,
-}: MapViewProps) {
+  AICommand,
+  AICommandPayload,
+  onAIActionComplete,
+  userLocation,
+  isExpanded,
+}: MapViewProps & { isExpanded?: boolean; userLocation?: { latitude: number; longitude: number } | null }) {
   const lang = language.toLowerCase() as 'en' | 'vi';
   const [selectedDestination, setSelectedDestination] =
     useState<Destination | null>(null);
@@ -47,7 +86,8 @@ export function MapView({
   const [previewDestination, setPreviewDestination] = useState<Destination | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<string>('All');
   const filterContainerRef = useRef<HTMLDivElement>(null);
-
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
   // Initialize mapListView to "list" if there's an optimized route
   const currentDay = days.find((d) => d.id === selectedDayId);
   const hasOptimizedRoute =
@@ -61,6 +101,134 @@ export function MapView({
   const [selectedPairIndex, setSelectedPairIndex] = useState<
     number | null
   >(null);
+
+  const mapRef = useRef<any>(null);
+  const onDestinationInputChange = async (value: string) => {
+    setNewDestinationName(value);
+    setSelectedPlaceId(null);
+    if (value.trim()) {
+      const results = await handleSearch(value);
+      setSearchResults(results);
+    } else {
+      setSearchResults([]);
+    }
+  };
+  const addDestination = async () => {
+    if (!selectedPlaceId || !newDestinationName) return;
+    setIsAdding(true);
+    try {
+      // Call your add destination logic here
+      await onAddDestination(newDestinationName);
+      setNewDestinationName('');
+      setSelectedPlaceId(null);
+      setSearchResults([]);
+    } finally {
+      setIsAdding(false);
+    }
+  };
+  // Determine destinations to display based on view mode
+  const getDestinations = () => {
+    if (viewMode === "single") {
+      const day = days.find((d) => d.id === selectedDayId);
+      if (day?.optimizedRoute.length) {
+        // Show all destinations, including user location if present
+        return day.optimizedRoute;
+      }
+      // Exclude user location from display if present
+      return (day?.destinations || [])
+        .filter(dest =>
+          !(
+            userLocation &&
+            dest.latitude === userLocation.latitude &&
+            dest.longitude === userLocation.longitude
+          )
+        );
+    } else {
+      return days.flatMap((d) => d.destinations);
+    }
+  };
+
+  const destinations = getDestinations();
+  const validDestinations = destinations.filter(
+    d =>
+      typeof d.latitude === "number" &&
+      typeof d.longitude === "number" &&
+      !isNaN(d.latitude) &&
+      !isNaN(d.longitude)
+  );
+
+  // Calculate bounds to fit all markers and route
+  const routeCoords = hasOptimizedRoute && currentDay && currentDay.routeGeometry
+    ? polyline.decode(currentDay.routeGeometry)
+    : [];
+
+  const allCoords = [
+    ...validDestinations.map(d => [d.latitude, d.longitude]),
+    ...routeCoords
+  ].filter(([lat, lng]) => !isNaN(lat) && !isNaN(lng));
+
+  const bounds = allCoords.length
+    ? [
+      [Math.min(...allCoords.map(([lat]) => lat)), Math.min(...allCoords.map(([_, lng]) => lng))],
+      [Math.max(...allCoords.map(([lat]) => lat)), Math.max(...allCoords.map(([_, lng]) => lng))]
+    ]
+    : undefined;
+
+  // Determine map center
+  const defaultCenter: [number, number] = [10.770048, 106.699707];
+  const mapCenter: [number, number] = userLocation
+    ? [userLocation.latitude, userLocation.longitude]
+    : defaultCenter;
+
+  // Handle map resize on expansion change
+  useEffect(() => {
+    if (mapRef.current) {
+      setTimeout(() => {
+        mapRef.current.invalidateSize();
+      }, 0);
+    }
+  }, [isExpanded]);
+
+  // Handle manual step actions from User Manual
+  useEffect(() => {
+    if (!manualStepAction || !onManualActionComplete) return;
+
+    const handleAction = async () => {
+      switch (manualStepAction) {
+        case 'map-view': {
+          // Switch to Route List view
+          if (hasOptimizedRoute) {
+            setMapListView('list');
+            setSelectedPairIndex(0);
+            await new Promise(resolve => setTimeout(resolve, 100));
+            toast.success('Switched to Route List view!');
+          } else {
+            toast.info('Optimize a route first to see the Route List');
+          }
+          break;
+        }
+
+        case 'route-list': {
+          // Choose the first route
+          if (currentDay && currentDay.optimizedRoute.length > 0) {
+            onRouteGuidance(currentDay, 0);
+            toast.success('Choose the first route!');
+          } else {
+            toast.info('No routes available');
+          }
+          break;
+        }
+
+        default:
+          break;
+      }
+
+      // Clear the action
+      onManualActionComplete();
+    };
+
+    handleAction();
+  }, [manualStepAction, onManualActionComplete, hasOptimizedRoute, currentDay, onRouteGuidance]);
 
   // Reset to map view when resetMapView is triggered
   useEffect(() => {
@@ -85,35 +253,6 @@ export function MapView({
     }
   }, [focusedDestination]);
 
-  const handleSearchPlace = () => {
-    if (!newDestinationName.trim()) return;
-
-    // Mock place types
-    const placeTypes = ['Restaurant', 'Museum', 'Hotel', 'Café', 'Park', 'Shopping Mall', 'Tourist Attraction'];
-    const randomPlaceType = placeTypes[Math.floor(Math.random() * placeTypes.length)];
-
-    // Create a preview destination with random coordinates and mock data
-    const preview: Destination = {
-      id: 'preview-' + Date.now(),
-      name: newDestinationName.trim(),
-      address: '123 Sample Street, Paris, France',
-      costs: [{ id: `${Date.now()}-1`, amount: 0, detail: '' }],
-      lat: 48.8566 + (Math.random() - 0.5) * 0.1,
-      lng: 2.3522 + (Math.random() - 0.5) * 0.1,
-      imageUrl: `https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=400&h=200&fit=crop`,
-      rating: 3.5 + Math.random() * 1.5, // Random rating between 3.5 and 5
-      reviewCount: Math.floor(Math.random() * 4950) + 50, // Random review count 50-5000
-      placeType: randomPlaceType,
-      openHours: '9:00 AM - 10:00 PM',
-      priceLevel: Math.floor(Math.random() * 4) + 1, // 1-4
-      website: 'https://example.com'
-    };
-
-    setPreviewDestination(preview);
-    setSelectedDestination(preview);
-    setNewDestinationName('');
-  };
-
   const handleAddDestination = async () => {
     if (!previewDestination) return;
 
@@ -122,7 +261,6 @@ export function MapView({
       await onAddDestination(previewDestination.name);
       setPreviewDestination(null);
       setSelectedDestination(null);
-      toast.success(t('destinationAdded', lang));
     } catch (error) {
       toast.error(t('errorAddingDestination', lang));
     } finally {
@@ -135,81 +273,19 @@ export function MapView({
     try {
       await onRemoveDestination(destinationId);
       setSelectedDestination(null);
-      toast.success(t('destinationRemoved', lang));
     } catch (error) {
       toast.error(t('errorRemovingDestination', lang));
     } finally {
       setIsAdding(false);
     }
   };
-
-  // Get destinations based on view mode
-  const getDestinations = () => {
-    if (viewMode === "single") {
-      const day = days.find((d) => d.id === selectedDayId);
-      return day?.optimizedRoute.length
-        ? day.optimizedRoute
-        : day?.destinations || [];
-    } else {
-      return days.flatMap((d) => d.destinations);
-    }
-  };
-
-  const destinations = getDestinations();
-
-  // Include preview destination in coordinate calculations
-  const allLocations = [...destinations];
-  if (previewDestination) {
-    allLocations.push(previewDestination);
-  }
-
-  // Use default coordinates if no locations
-  const lats = allLocations.length > 0 ? allLocations.map((d) => d.lat) : [48.8566];
-  const lngs = allLocations.length > 0 ? allLocations.map((d) => d.lng) : [2.3522];
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-  const minLng = Math.min(...lngs);
-  const maxLng = Math.max(...lngs);
-  const centerLat = (minLat + maxLat) / 2;
-  const centerLng = (minLng + maxLng) / 2;
-
-  const mapWidth = 700;
-  const mapHeight = 600;
-  const padding = 60;
-
-  const latRange = maxLat - minLat || 0.1;
-  const lngRange = maxLng - minLng || 0.1;
-
-  const toMapX = (lng: number) => {
-    return (
-      padding +
-      ((lng - minLng) / lngRange) * (mapWidth - 2 * padding)
-    );
-  };
-
-  const toMapY = (lat: number) => {
-    return (
-      mapHeight -
-      (padding +
-        ((lat - minLat) / latRange) * (mapHeight - 2 * padding))
-    );
-  };
-
-  // Generate route pairs
-  const getRoutePairs = (): Array<
-    [Destination, Destination]
-  > => {
-    if (!hasOptimizedRoute || !currentDay) return [];
-    const route = currentDay.optimizedRoute;
-    const pairs: Array<[Destination, Destination]> = [];
-    for (let i = 0; i < route.length - 1; i++) {
-      pairs.push([route[i], route[i + 1]]);
-    }
-    return pairs;
-  };
-
-  const routePairs = getRoutePairs();
-
+  const routePairs =
+    hasOptimizedRoute && currentDay
+      ? currentDay.optimizedRoute.slice(0, -1).map((from, idx) => [
+        from,
+        currentDay.optimizedRoute[idx + 1],
+      ])
+      : [];
   const { primary, secondary, accent, light } = useThemeColors();
 
   return (
@@ -341,38 +417,63 @@ export function MapView({
 
         {/* Search Place Input - Only in Custom Mode and Map View */}
         {mode !== 'view' && mapListView === "map" && (
+          console.log('Rendering search input'),
           <div className="space-y-3" data-tutorial="search-place">
-            {/* Hero Search Bar */}
-            <div className="relative">
-              {/* Search Container */}
-              <div className="relative flex items-center gap-2 h-10 px-4 bg-[#F3F4F6] rounded-2xl transition-all duration-300 hover:bg-[#E8EBED] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#5B67CA] focus-within:ring-opacity-30 focus-within:shadow-lg group">
-                {/* Input Field */}
-                <input
-                  type="text"
-                  placeholder={language === 'EN'
-                    ? 'I\'m looking for...'
-                    : 'Tôi đang tìm...'}
-                  value={newDestinationName}
-                  onChange={(e) => setNewDestinationName(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && !isAdding && handleSearchPlace()}
-                  disabled={isAdding}
-                  className="flex-1 bg-transparent border-none outline-none text-gray-700 placeholder:text-gray-400 text-[14px] transition-all"
-                />
-
-                {/* Circular Search Button */}
-                <button
-                  onClick={handleSearchPlace}
-                  disabled={isAdding || !newDestinationName.trim()}
-                  className="absolute right-0 top-0 bottom-0 px-4 rounded-xl bg-[#5B67CA] hover:bg-[#4A56B9] text-white flex items-center justify-center transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed shadow-md hover:shadow-lg hover:scale-105 active:scale-95 group-focus-within:shadow-xl"
-                >
-                  {isAdding ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Search className="w-4 h-4 transition-transform group-focus-within:scale-110" />
-                  )}
-                </button>
-              </div>
+            <div style={{ position: "relative", flex: 1 }}>
+              <input
+                type="text"
+                placeholder={language === 'EN'
+                  ? 'I\'m looking for...'
+                  : 'Tôi đang tìm...'}
+                value={newDestinationName}
+                onChange={(e) => {
+                  console.log(e.target.value);
+                  onDestinationInputChange(e.target.value)
+                }}
+                onKeyPress={(e) => e.key === 'Enter' && !isAdding && addDestination()}
+                disabled={isAdding}
+                className="flex-1 bg-transparent border-none outline-none text-gray-700 placeholder:text-gray-400 text-[14px] transition-all"
+              />
+              {/* Autocomplete dropdown */}
+              {searchResults.length > 0 && (
+                <div style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  right: 0,
+                  background: "white",
+                  border: "1px solid #eee",
+                  zIndex: 10,
+                  maxHeight: 200,
+                  overflowY: "auto"
+                }}>
+                  {searchResults.map((result, idx) => (
+                    <div
+                      key={idx}
+                      style={{ padding: "8px", cursor: "pointer" }}
+                      onClick={() => {
+                        setNewDestinationName(result.title);
+                        setSelectedPlaceId(result.place_id);
+                        setSearchResults([]);
+                      }}
+                    >
+                      {result.title}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
+            <button
+              onClick={addDestination}
+              disabled={isAdding || !selectedPlaceId}
+              className="absolute right-0 top-0 bottom-0 px-4 rounded-xl bg-[#5B67CA] hover:bg-[#4A56B9] text-white flex items-center justify-center transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed shadow-md hover:shadow-lg hover:scale-105 active:scale-95 group-focus-within:shadow-xl"
+            >
+              {isAdding ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Search className="w-4 h-4 transition-transform group-focus-within:scale-110" />
+              )}
+            </button>
 
             {/* Filter Chips Row - Horizontally Scrollable with Blur Edges */}
             <div className="relative" ref={filterContainerRef}>
@@ -611,7 +712,7 @@ export function MapView({
                     {selectedPairIndex === idx && (
                       <button
                         onClick={() =>
-                          onRouteGuidance(pair[0], pair[1])
+                          onRouteGuidance(currentDay, idx)
                         }
                         className="w-full h-12 rounded-lg relative overflow-hidden group transition-all duration-300"
                         style={{
@@ -696,175 +797,69 @@ export function MapView({
         {mapListView === "map" && (
           <>
             {/* Map */}
-            <div className="bg-gray-50 rounded-lg overflow-hidden border relative flex-1 p-4">
-              <svg
-                viewBox={`0 0 ${mapWidth} ${mapHeight}`}
-                className="w-full h-full"
-                style={{ maxHeight: "550px" }}
-              >
-                {/* Background */}
-                <rect
-                  width={mapWidth}
-                  height={mapHeight}
-                  fill="#f0f9ff"
-                />
+            <div className="rounded-lg overflow-hidden border relative">
+              <div className="leaflet-container" style={{ height: "550px", width: "100%" }}>
+                <MapContainer
+                  ref={mapRef}
+                  center={mapCenter}
+                  zoom={13}
+                  style={{ height: '100%', width: '100%' }}
+                >
+                  <MapClickHandler onClick={onMapClick} />
 
-                {/* Grid */}
-                {Array.from({ length: 10 }).map((_, i) => (
-                  <g key={i} opacity="0.1">
-                    <line
-                      x1={i * (mapWidth / 10)}
-                      y1={0}
-                      x2={i * (mapWidth / 10)}
-                      y2={mapHeight}
-                      stroke="#94a3b8"
-                      strokeWidth="1"
-                    />
-                    <line
-                      x1={0}
-                      y1={i * (mapHeight / 10)}
-                      x2={mapWidth}
-                      y2={i * (mapHeight / 10)}
-                      stroke="#94a3b8"
-                      strokeWidth="1"
-                    />
-                  </g>
-                ))}
-
-                {/* Route Lines */}
-                {hasOptimizedRoute &&
-                  currentDay &&
-                  currentDay.optimizedRoute.map((dest, idx) => {
-                    if (idx === 0) return null;
-                    const prev =
-                      currentDay.optimizedRoute[idx - 1];
-                    return (
-                      <line
-                        key={`line-${dest.id}`}
-                        x1={toMapX(prev.lng)}
-                        y1={toMapY(prev.lat)}
-                        x2={toMapX(dest.lng)}
-                        y2={toMapY(dest.lat)}
-                        stroke="#6366f1"
-                        strokeWidth="3"
-                        strokeDasharray="5,5"
-                        opacity="0.6"
-                      />
-                    );
-                  })}
-
-                {/* Destination Markers */}
-                {destinations.map((dest, idx) => {
-                  const x = toMapX(dest.lng);
-                  const y = toMapY(dest.lat);
-                  const isSelected =
-                    selectedDestination?.id === dest.id;
-
-                  return (
-                    <g
-                      key={dest.id}
-                      onClick={() => {
-                        setSelectedDestination(dest);
-                        // Notify parent component about the click in View Mode
-                        if (mode === 'view' && onDestinationClick) {
-                          onDestinationClick(dest);
-                        }
-                      }}
-                      className="cursor-pointer"
-                    >
-                      {/* Marker Pin */}
-                      <circle
-                        cx={x}
-                        cy={y}
-                        r={isSelected ? "12" : "10"}
-                        fill="white"
-                        stroke={
-                          isSelected
-                            ? "#f59e0b"
-                            : hasOptimizedRoute
-                              ? "#6366f1"
-                              : "#10b981"
-                        }
-                        strokeWidth={isSelected ? "4" : "3"}
-                      />
-                      {hasOptimizedRoute && (
-                        <text
-                          x={x}
-                          y={y + 1}
-                          textAnchor="middle"
-                          dominantBaseline="middle"
-                          fontSize="10"
-                          fill="#6366f1"
-                          className="pointer-events-none"
+                  <FitBounds bounds={bounds} />
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  />
+                  {
+                    hasOptimizedRoute && currentDay && currentDay.routeGeometry && (
+                      <>
+                        <Polyline
+                          positions={polyline.decode(currentDay.routeGeometry).filter(
+                            ([lat, lng]) => !isNaN(lat) && !isNaN(lng)
+                          )}
+                          color="#004DB6"
+                          weight={3}
+                          opacity={1}
+                        />
+                      </>
+                    )
+                  }
+                  {
+                    destinations
+                      .filter(loc =>
+                        typeof loc.latitude === "number" &&
+                        typeof loc.longitude === "number" &&
+                        !isNaN(loc.latitude) &&
+                        !isNaN(loc.longitude)
+                      )
+                      .map((loc, idx) => (
+                        <Marker
+                          key={idx}
+                          position={[loc.latitude, loc.longitude]}
                         >
-                          {idx + 1}
-                        </text>
-                      )}
-
-                      {/* Label */}
-                      <text
-                        x={x}
-                        y={y - 18}
-                        textAnchor="middle"
-                        fontSize="11"
-                        fill="#1e293b"
-                        className="pointer-events-none"
+                          <Popup>{loc.name}</Popup>
+                        </Marker>
+                      ))
+                  }
+                  {/* Preview Destination Marker*/}
+                  {previewDestination &&
+                    typeof previewDestination.latitude === "number" &&
+                    typeof previewDestination.longitude === "number" &&
+                    !isNaN(previewDestination.latitude) &&
+                    !isNaN(previewDestination.longitude) && (
+                      <Marker
+                        position={[previewDestination.latitude, previewDestination.longitude]}
+                        eventHandlers={{
+                          click: () => setSelectedDestination(previewDestination)
+                        }}
                       >
-                        {dest.name.length > 15
-                          ? dest.name.substring(0, 15) + "..."
-                          : dest.name}
-                      </text>
-                    </g>
-                  );
-                })}
-
-                {/* Preview Destination Marker */}
-                {previewDestination && (
-                  <g
-                    onClick={() =>
-                      setSelectedDestination(previewDestination)
-                    }
-                    className="cursor-pointer"
-                  >
-                    {/* Marker Pin - Orange/Yellow for Preview */}
-                    <circle
-                      cx={toMapX(previewDestination.lng)}
-                      cy={toMapY(previewDestination.lat)}
-                      r={selectedDestination?.id === previewDestination.id ? "12" : "10"}
-                      fill="white"
-                      stroke="#f59e0b"
-                      strokeWidth={selectedDestination?.id === previewDestination.id ? "4" : "3"}
-                    />
-
-                    {/* Question Mark Icon for Preview */}
-                    <text
-                      x={toMapX(previewDestination.lng)}
-                      y={toMapY(previewDestination.lat) + 1}
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                      fontSize="12"
-                      fill="#f59e0b"
-                      className="pointer-events-none"
-                    >
-                      ?
-                    </text>
-
-                    {/* Label */}
-                    <text
-                      x={toMapX(previewDestination.lng)}
-                      y={toMapY(previewDestination.lat) - 18}
-                      textAnchor="middle"
-                      fontSize="11"
-                      fill="#f59e0b"
-                      className="pointer-events-none"
-                    >
-                      {previewDestination.name.length > 15
-                        ? previewDestination.name.substring(0, 15) + "..."
-                        : previewDestination.name}
-                    </text>
-                  </g>
-                )}
-              </svg>
+                        <Popup>{previewDestination.name}</Popup>
+                      </Marker>
+                    )}
+                </MapContainer>
+              </div>
 
               {/* Selected Destination Details - Only show in Custom Mode */}
               {mode !== 'view' && selectedDestination && (
@@ -1188,6 +1183,6 @@ export function MapView({
           </>
         )}
       </div>
-    </Card>
+    </Card >
   );
 }

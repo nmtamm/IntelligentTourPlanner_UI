@@ -1563,6 +1563,14 @@ Bạn có thể đề cập một số chi tiết dưới đây để giúp chú
     en: "No instructions available.",
     vi: "Không có hướng dẫn nào."
   },
+  errorAddingDestination: {
+    en: "Error adding destination. Please try again.",
+    vi: "Lỗi khi thêm điểm đến. Vui lòng thử lại.",
+  },
+  errorRemovingDestination: {
+    en: "Error removing destination. Please try again.",
+    vi: "Lỗi khi xóa điểm đến. Vui lòng thử lại.",
+  },
 } as const;
 
 export type TranslationKey = keyof typeof TRANSLATIONS;

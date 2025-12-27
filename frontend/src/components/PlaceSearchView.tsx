@@ -5,7 +5,7 @@ import { Destination } from "../types";
 import { t } from "../locales/translations";
 import { useThemeColors } from "../hooks/useThemeColors";
 import { PlaceDetailsModal } from "./PlaceDetailsModal";
-
+import { handleSearch, getPlaceById } from "../utils/serp";
 interface PlaceSearchViewProps {
   onAddDestination: (place: Destination) => Promise<void>;
   language: "EN" | "VI";
@@ -26,53 +26,18 @@ export function PlaceSearchView({
   const [selectedPlace, setSelectedPlace] = useState<Destination | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const filterContainerRef = useRef<HTMLDivElement>(null);
-
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
-
-    setIsSearching(true);
-
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
-    // Mock search results with multiple places
-    const placeTypes = [
-      "Restaurant",
-      "Museum",
-      "Hotel",
-      "Café",
-      "Park",
-      "Shopping Mall",
-      "Tourist Attraction",
-      "Temple",
-      "Beach",
-      "Market",
-    ];
-
-    const mockResults: Destination[] = Array.from({ length: 5 }, (_, i) => {
-      const randomType =
-        placeTypes[Math.floor(Math.random() * placeTypes.length)];
-      return {
-        id: `search-${Date.now()}-${i}`,
-        name: `${searchQuery} ${i + 1}`,
-        address: `${100 + i * 50} Sample Street, Paris, France`,
-        costs: [{ id: `${Date.now()}-${i}-1`, amount: 0, detail: "" }],
-        lat: 48.8566 + (Math.random() - 0.5) * 0.1,
-        lng: 2.3522 + (Math.random() - 0.5) * 0.1,
-        imageUrl: `https://images.unsplash.com/photo-${
-          1514933651103 + i * 1000000
-        }?w=400&h=200&fit=crop`,
-        rating: 3.5 + Math.random() * 1.5,
-        reviewCount: Math.floor(Math.random() * 4950) + 50,
-        placeType: randomType,
-        openHours: "9:00 AM - 10:00 PM",
-        priceLevel: Math.floor(Math.random() * 4) + 1,
-        website: "https://example.com",
-      };
-    });
-
-    setSearchResults(mockResults);
-    setIsSearching(false);
+  const [selectedPlaceId, setSelectedPlaceId] = useState(null);
+  const onSearchInputChange = async (value: string) => {
+    setSearchQuery(value);
+    if (value.trim()) {
+      setIsSearching(true);
+      const results = await handleSearch(value);
+      console.log('Search results:', results);
+      setSearchResults(results);
+      setIsSearching(false);
+    } else {
+      setSearchResults([]);
+    }
   };
 
   const handlePlaceClick = (place: Destination) => {
@@ -84,6 +49,18 @@ export function PlaceSearchView({
     await onAddDestination(place);
     setIsModalOpen(false);
     setSearchResults(searchResults.filter((p) => p.id !== place.id));
+  };
+
+  // Add button: fetch full place info and open modal
+  const handleAddClick = async () => {
+    if (!selectedPlaceId) return;
+    setIsSearching(true);
+    const place = await getPlaceById(selectedPlaceId);
+    setIsSearching(false);
+    if (place) {
+      setSelectedPlace(place);
+      setIsModalOpen(true);
+    }
   };
 
   return (
@@ -118,36 +95,13 @@ export function PlaceSearchView({
                       : "Tôi đang tìm..."
                   }
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyPress={(e) =>
-                    e.key === "Enter" && !isSearching && handleSearch()
-                  }
+                  onChange={e => setSearchQuery(e.target.value)}
+                  onKeyPress={e => {
+                    if (e.key === "Enter") onSearchInputChange(searchQuery);
+                  }}
                   disabled={isSearching}
                   className="flex-1 bg-transparent border-none outline-none text-gray-700 placeholder:text-gray-400 text-[14px] transition-all"
                 />
-
-                <button
-                  onClick={handleSearch}
-                  disabled={isSearching || !searchQuery.trim()}
-                  className="absolute right-0 top-0 bottom-0 px-4 rounded-xl text-white flex items-center justify-center transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed shadow-md hover:shadow-lg hover:scale-105 active:scale-95 group-focus-within:shadow-xl"
-                  style={{
-                    backgroundColor: primary,
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isSearching && searchQuery.trim()) {
-                      e.currentTarget.style.backgroundColor = secondary;
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = primary;
-                  }}
-                >
-                  {isSearching ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Search className="w-4 h-4 transition-transform group-focus-within:scale-110" />
-                  )}
-                </button>
               </div>
             </div>
 
@@ -189,10 +143,9 @@ export function PlaceSearchView({
                       }}
                       className={`
                         flex-shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-medium h-[30px]
-                        ${
-                          selectedFilter === filter.id
-                            ? "text-white scale-100 animate-bounce-subtle"
-                            : "bg-[#F1F5FF] text-[#1F2937] hover:bg-[#F6F9FF] hover:scale-[1.03] active:bg-[#E6EEFF] active:scale-[0.97]"
+                        ${selectedFilter === filter.id
+                          ? "text-white scale-100 animate-bounce-subtle"
+                          : "bg-[#F1F5FF] text-[#1F2937] hover:bg-[#F6F9FF] hover:scale-[1.03] active:bg-[#E6EEFF] active:scale-[0.97]"
                         }
                       `}
                       style={{
@@ -245,9 +198,9 @@ export function PlaceSearchView({
                 <p className="text-sm text-gray-600 px-2">
                   {t("searchResults", lang)} ({searchResults.length})
                 </p>
-                {searchResults.map((place) => (
+                {[...new Map(searchResults.map(place => [place.place_id, place])).values()].map((place: any) => (
                   <div
-                    key={place.id}
+                    key={place.place_id}
                     className="bg-white border border-gray-200 rounded-xl p-3 cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-1 group flex gap-3"
                     onClick={() => handlePlaceClick(place)}
                     style={{
@@ -348,13 +301,14 @@ export function PlaceSearchView({
             )}
           </div>
         </div>
-      </Card>
+      </Card >
 
       {/* Place Details Modal */}
-      <PlaceDetailsModal
+      < PlaceDetailsModal
         place={selectedPlace}
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => setIsModalOpen(false)
+        }
         language={language}
         onAddToDay={handleAddToDay}
         showAddButton={true}
