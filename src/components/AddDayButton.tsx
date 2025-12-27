@@ -21,6 +21,7 @@ export function AddDayButton({ onClick, label }: AddDayButtonProps) {
       onMouseDown={() => setIsPressed(true)}
       onMouseUp={() => setIsPressed(false)}
       className="shrink-0 transition-all"
+      data-tutorial="add-day-btn"
       style={{
         height: '27px',
         paddingLeft: '18px',

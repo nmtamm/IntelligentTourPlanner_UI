@@ -21,6 +21,7 @@ interface MapViewProps {
   focusedDestination?: Destination | null;
   onOptimizeRoute?: () => Promise<void>;
   isOptimizing?: boolean;
+  onDestinationClick?: (destination: Destination) => void;
 }
 
 export function MapView({
@@ -36,6 +37,7 @@ export function MapView({
   focusedDestination,
   onOptimizeRoute,
   isOptimizing,
+  onDestinationClick,
 }: MapViewProps) {
   const lang = language.toLowerCase() as 'en' | 'vi';
   const [selectedDestination, setSelectedDestination] =
@@ -216,16 +218,16 @@ export function MapView({
       style={{
         boxShadow: '0 18px 40px rgba(15, 23, 42, 0.08)'
       }}
-      data-tutorial-card="map"
+      data-tutorial-card="map-view"
     >
       <div className="space-y-4 h-full flex flex-col">
         {/* Map View Header - Always shown, but only clickable in View Mode */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           {mode === 'custom' ? (
             // Header in Custom Mode - not clickable
             <div 
-              className="flex items-center text-gray-900 px-4 py-2.5 h-auto font-semibold text-[20px]"
-              data-tutorial="map-view"
+              className="flex items-center text-gray-900 px-0 py-2.5 h-auto font-semibold text-[20px]"
+              data-tutorial="map-view-header"
             >
               <Map className="w-6 h-6 mr-2" />
               {t('mapView', lang)}
@@ -239,7 +241,7 @@ export function MapView({
                 );
               }}
               className="text-gray-900 px-4 py-2.5 h-auto font-semibold text-[20px] rounded-lg relative overflow-hidden group"
-              data-tutorial="map-view"
+              data-tutorial="map-view-header"
               style={{
                 background: 'transparent',
                 border: 'none',
@@ -285,7 +287,7 @@ export function MapView({
                 {mapListView === "map" ? (
                   <>
                     <Map 
-                      className="w-5 h-5 mr-2 transition-all duration-400 group-hover:scale-110 group-hover:rotate-12" 
+                      className="w-6 h-6 mr-2 transition-all duration-400 group-hover:scale-110 group-hover:rotate-12" 
                       style={{
                         color: primary,
                         filter: `drop-shadow(0 0 8px ${primary}40)`,
@@ -298,7 +300,7 @@ export function MapView({
                 ) : (
                   <>
                     <List 
-                      className="w-5 h-5 mr-2 transition-all duration-400 group-hover:scale-110 group-hover:-rotate-12" 
+                      className="w-5 h-5 mr-2 transition-all duration-400 group-hover:scale-110 group-hover:rotate-12" 
                       style={{
                         color: secondary,
                         filter: `drop-shadow(0 0 8px ${secondary}40)`,
@@ -312,29 +314,30 @@ export function MapView({
               </span>
             </button>
           )}
-        </div>
 
-        {/* Find Optimal Route Button - Only in View Mode and Map View */}
-        {mode === 'view' && mapListView === 'map' && onOptimizeRoute && (
-          <Button
-            onClick={onOptimizeRoute}
-            disabled={isOptimizing || (currentDay && currentDay.destinations.length < 2)}
-            className="w-full bg-[#70C573] hover:bg-[#5E885D] text-white"
-            data-tutorial="optimize"
-          >
-            {isOptimizing ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                {t('optimizing', lang)}...
-              </>
-            ) : (
-              <>
-                <Navigation className="w-4 h-4 mr-2" />
-                {t('findOptimalRoute', lang)}
-              </>
-            )}
-          </Button>
-        )}
+          {/* Find Optimal Route Button - Only in View Mode and Map View - On Same Line */}
+          {mode === 'view' && mapListView === 'map' && onOptimizeRoute && (
+            <Button
+              onClick={onOptimizeRoute}
+              disabled={isOptimizing || (currentDay && currentDay.destinations.length < 2)}
+              className="bg-[#70C573] hover:bg-[#5E885D] text-white shrink-0"
+              data-tutorial="find-optimal-route"
+              style={{ height: '40px' }}
+            >
+              {isOptimizing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  {t('optimizing', lang)}...
+                </>
+              ) : (
+                <>
+                  <Navigation className="w-4 h-4 mr-2" />
+                  {t('findOptimalRoute', lang)}
+                </>
+              )}
+            </Button>
+          )}
+        </div>
 
         {/* Search Place Input - Only in Custom Mode and Map View */}
         {mode !== 'view' && mapListView === "map" && (
@@ -668,7 +671,7 @@ export function MapView({
                         {/* Button content */}
                         <span className="relative z-10 flex items-center justify-center gap-2 font-medium">
                           <Navigation 
-                            className="w-5 h-5 transition-all duration-300 group-hover:scale-125 group-hover:rotate-90" 
+                            className="w-5 h-5 transition-all duration-300 group-hover:scale-125 group-hover:rotate-45" 
                             style={{
                               filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.6))',
                             }}
@@ -761,9 +764,13 @@ export function MapView({
                   return (
                     <g
                       key={dest.id}
-                      onClick={() =>
-                        setSelectedDestination(dest)
-                      }
+                      onClick={() => {
+                        setSelectedDestination(dest);
+                        // Notify parent component about the click in View Mode
+                        if (mode === 'view' && onDestinationClick) {
+                          onDestinationClick(dest);
+                        }
+                      }}
                       className="cursor-pointer"
                     >
                       {/* Marker Pin */}
@@ -860,8 +867,8 @@ export function MapView({
                 )}
               </svg>
 
-              {/* Selected Destination Details */}
-              {selectedDestination && (
+              {/* Selected Destination Details - Only show in Custom Mode */}
+              {mode !== 'view' && selectedDestination && (
                 <div className="absolute bottom-4 left-4 right-4 bg-white rounded-xl shadow-2xl overflow-hidden border-2 border-gray-100 max-w-md mx-auto">
                   {/* Close Button */}
                   <Button

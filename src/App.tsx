@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CustomMode } from "./components/CustomMode";
 import { AuthModal } from "./components/AuthModal";
+import { AccountProfile } from "./components/AccountProfile";
 import { SavedPlans } from "./components/SavedPlans";
 import { UserManual } from "./components/UserManual";
 import { Settings } from "./components/Settings";
@@ -27,13 +28,22 @@ type Currency = "USD" | "VND";
 type Language = "EN" | "VI";
 type Mode = "custom" | "view";
 
+interface UserProfile {
+  username: string;
+  email: string;
+  password: string;
+  avatar?: string;
+}
+
 function AppContent() {
   const [showIntro, setShowIntro] = useState(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isAccountProfileOpen, setIsAccountProfileOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<string | null>(
     null,
   );
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [showSavedPlans, setShowSavedPlans] = useState(false);
   const [currency, setCurrency] = useState<"USD" | "VND">(
     "USD",
@@ -55,18 +65,38 @@ function AppContent() {
   // Use theme hook
   const { currentTheme } = useTheme();
 
-  const handleLogin = (email: string) => {
+  const handleLogin = (email: string, username?: string, password?: string) => {
     setIsLoggedIn(true);
     setCurrentUser(email);
+    
+    // Create user profile
+    setUserProfile({
+      username: username || email.split('@')[0],
+      email: email,
+      password: password || 'defaultPassword123', // In real app, this would be hashed
+      avatar: undefined
+    });
+    
     setIsAuthModalOpen(false);
     setShowIntro(false);
   };
 
-  const handleContinueFromIntro = (userEmail?: string) => {
+  const handleContinueFromIntro = (userEmail?: string, username?: string, password?: string) => {
     if (userEmail) {
       // User logged in or registered
       setIsLoggedIn(true);
       setCurrentUser(userEmail);
+      
+      // Create user profile
+      setUserProfile({
+        username: username || userEmail.split('@')[0],
+        email: userEmail,
+        password: password || 'defaultPassword123',
+        avatar: undefined
+      });
+    } else {
+      // Guest user - automatically open user manual
+      setIsUserManualOpen(true);
     }
     // Close intro screen
     setShowIntro(false);
@@ -75,17 +105,37 @@ function AppContent() {
   const handleLogout = () => {
     setIsLoggedIn(false);
     setCurrentUser(null);
+    setUserProfile(null);
     setShowSavedPlans(false);
+    setIsAccountProfileOpen(false);
   };
 
-  const handleLoadPlan = (plan: {
-    id: string;
-    name: string;
-    days: DayPlan[];
+  const handleUpdateProfile = (updates: {
+    username?: string;
+    email?: string;
+    password?: string;
+    avatar?: string;
   }) => {
+    if (userProfile) {
+      setUserProfile({
+        ...userProfile,
+        ...updates
+      });
+      
+      // Update currentUser if email changed
+      if (updates.email) {
+        setCurrentUser(updates.email);
+      }
+    }
+  };
+
+  const handleLoadPlan = (plan: SavedPlan) => {
     setTripData({ name: plan.name, days: plan.days });
     setCurrentPlanId(plan.id);
     setShowSavedPlans(false);
+    
+    // Switch to View mode when loading a plan
+    setMode("view");
     
     // Trigger View All Days mode when a plan is loaded
     setShowAllDaysOnLoad(true);
@@ -158,10 +208,17 @@ function AppContent() {
           onModeChange={setMode}
           onSettingsClick={() => setIsSettingsOpen(true)}
           onUserManualClick={handleOpenUserManual}
+          onMyPlansClick={() => {
+            if (isLoggedIn) {
+              setShowSavedPlans(true);
+            } else {
+              setIsAuthModalOpen(true);
+            }
+          }}
           onLoginClick={() => {
             if (isLoggedIn) {
-              // Show user menu or handle user actions
-              handleLogout();
+              // Show account profile modal
+              setIsAccountProfileOpen(true);
             } else {
               setIsAuthModalOpen(true);
             }
@@ -169,6 +226,7 @@ function AppContent() {
           isLoggedIn={isLoggedIn}
           currentUser={currentUser}
           language={language}
+          isMyPlansActive={showSavedPlans && isLoggedIn}
         />
       )}
 
@@ -227,11 +285,25 @@ function AppContent() {
         language={language}
       />
 
+      {/* Account Profile Modal */}
+      {userProfile && (
+        <AccountProfile
+          isOpen={isAccountProfileOpen}
+          onClose={() => setIsAccountProfileOpen(false)}
+          onLogout={handleLogout}
+          currentUser={userProfile}
+          onUpdateProfile={handleUpdateProfile}
+          language={language}
+        />
+      )}
+
       {/* User Manual */}
       <UserManual
         isOpen={isUserManualOpen}
         onClose={handleCloseUserManual}
         language={language}
+        currentMode={mode}
+        onModeChange={setMode}
       />
 
       {/* Settings Modal */}

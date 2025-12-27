@@ -78,7 +78,7 @@ export function ChatBox({ language }: ChatBoxProps) {
   };
 
   return (
-    <div className="h-full flex flex-col bg-white border-l border-gray-200">
+    <div className="h-full flex flex-col bg-white border-l border-gray-200" data-tutorial-card="chatbox">
       {/* Header */}
       <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-green-50">
         <div className="flex items-center gap-2">

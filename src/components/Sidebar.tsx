@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { Edit, Eye, Settings, HelpCircle, User, LogIn } from "lucide-react";
+import { Edit, Eye, Settings, HelpCircle, User, LogIn, FolderOpen } from "lucide-react";
 import { useThemeColors } from "../hooks/useThemeColors";
 
 interface SidebarProps {
@@ -8,9 +8,11 @@ interface SidebarProps {
   onSettingsClick: () => void;
   onUserManualClick: () => void;
   onLoginClick: () => void;
+  onMyPlansClick: () => void;
   isLoggedIn: boolean;
   currentUser: string | null;
   language: "EN" | "VI";
+  isMyPlansActive?: boolean;
 }
 
 export function Sidebar({
@@ -19,9 +21,11 @@ export function Sidebar({
   onSettingsClick,
   onUserManualClick,
   onLoginClick,
+  onMyPlansClick,
   isLoggedIn,
   currentUser,
   language,
+  isMyPlansActive = false,
 }: SidebarProps) {
   const { primary, secondary, accent, light, primaryDark, secondaryDark } = useThemeColors();
   
@@ -31,7 +35,10 @@ export function Sidebar({
   };
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-20 bg-gradient-to-b from-[#2D2D2D] to-[#1F1F1F] border border-[#3B3B3B] rounded-r-2xl flex flex-col items-center py-4 z-40 shadow-xl">
+    <aside 
+      className="fixed left-0 top-0 bottom-0 w-20 bg-gradient-to-b from-[#2D2D2D] to-[#1F1F1F] border border-[#3B3B3B] rounded-r-2xl flex flex-col items-center py-4 z-40 shadow-xl"
+      data-tutorial="sidebar"
+    >
       {/* Top Section - Avatar Button */}
       <div className="mb-6">
         <motion.button
@@ -40,6 +47,7 @@ export function Sidebar({
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
           title={isLoggedIn ? currentUser || "" : language === "EN" ? "Login" : "Đăng nhập"}
+          data-tutorial="login-btn"
         >
           {isLoggedIn ? (
             <>
@@ -74,6 +82,52 @@ export function Sidebar({
         </motion.button>
       </div>
 
+      {/* My Plans Button */}
+      <div className="flex flex-col items-center gap-1 mb-6">
+        <motion.button
+          onClick={onMyPlansClick}
+          className="relative w-16 h-16 rounded-2xl flex items-center justify-center group"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          title={language === "EN" ? "My Plans" : "Kế hoạch"}
+          data-tutorial="saved-plans-btn"
+        >
+          {/* Active Indicator */}
+          {isMyPlansActive && (
+            <motion.div
+              className="absolute inset-2 rounded-xl"
+              style={{
+                background: `linear-gradient(135deg, ${secondary} 0%, ${secondaryDark} 100%)`,
+                boxShadow: `0 4px 20px ${secondary}80, inset 0 1px 2px rgba(255, 255, 255, 0.3)`,
+              }}
+              layoutId="activeMode"
+              transition={{
+                type: "spring",
+                stiffness: 350,
+                damping: 28,
+              }}
+            />
+          )}
+          
+          {/* Icon */}
+          <FolderOpen
+            className="relative z-10 w-7 h-7 stroke-[2]"
+            style={{
+              color: isMyPlansActive ? "#2D2D2D" : "#9CA3AF",
+              transition: "color 0.2s ease",
+            }}
+          />
+          
+          {/* Hover Effect */}
+          {!isMyPlansActive && (
+            <div className="absolute inset-2 rounded-xl bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+          )}
+        </motion.button>
+        <span className="text-[10px] text-gray-400">
+          {language === "EN" ? "My Plans" : "Kế hoạch"}
+        </span>
+      </div>
+
       {/* Divider */}
       <div className="w-10 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent mb-8" />
 
@@ -87,9 +141,10 @@ export function Sidebar({
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             title={language === "EN" ? "Custom Mode" : "Chế độ Tùy chỉnh"}
+            data-tutorial="custom-mode-btn"
           >
             {/* Active Indicator */}
-            {mode === "custom" && (
+            {mode === "custom" && !isMyPlansActive && (
               <motion.div
                 className="absolute inset-2 rounded-xl"
                 style={{
@@ -109,13 +164,13 @@ export function Sidebar({
             <Edit
               className="relative z-10 w-7 h-7 stroke-[2]"
               style={{
-                color: mode === "custom" ? "#2D2D2D" : "#9CA3AF",
+                color: mode === "custom" && !isMyPlansActive ? "#2D2D2D" : "#9CA3AF",
                 transition: "color 0.2s ease",
               }}
             />
             
             {/* Hover Effect */}
-            {mode !== "custom" && (
+            {(mode !== "custom" || isMyPlansActive) && (
               <div className="absolute inset-2 rounded-xl bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
             )}
           </motion.button>
@@ -132,9 +187,10 @@ export function Sidebar({
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             title={language === "EN" ? "View Mode" : "Chế độ Xem"}
+            data-tutorial="view-mode-btn"
           >
             {/* Active Indicator */}
-            {mode === "view" && (
+            {mode === "view" && !isMyPlansActive && (
               <motion.div
                 className="absolute inset-2 rounded-xl"
                 style={{
@@ -154,13 +210,13 @@ export function Sidebar({
             <Eye
               className="relative z-10 w-7 h-7 stroke-[2]"
               style={{
-                color: mode === "view" ? "#2D2D2D" : "#9CA3AF",
+                color: mode === "view" && !isMyPlansActive ? "#2D2D2D" : "#9CA3AF",
                 transition: "color 0.2s ease",
               }}
             />
             
             {/* Hover Effect */}
-            {mode !== "view" && (
+            {(mode !== "view" || isMyPlansActive) && (
               <div className="absolute inset-2 rounded-xl bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
             )}
           </motion.button>
@@ -183,6 +239,7 @@ export function Sidebar({
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             title={language === "EN" ? "User Manual" : "Hướng dẫn"}
+            data-tutorial="user-manual-btn"
           >
             <HelpCircle
               className="w-7 h-7 stroke-[2] text-[#9CA3AF] transition-colors"
@@ -212,6 +269,7 @@ export function Sidebar({
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             title={language === "EN" ? "Settings" : "Cài đặt"}
+            data-tutorial="settings-btn"
           >
             <Settings
               className="w-7 h-7 stroke-[2] text-[#9CA3AF] transition-colors"

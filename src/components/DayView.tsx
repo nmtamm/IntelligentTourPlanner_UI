@@ -15,6 +15,7 @@ import { DayPlan, Destination, CostItem } from "../types";
 import { toast } from "sonner@2.0.3";
 import { t } from "../locales/translations";
 import { ErrorNotification } from "./ErrorNotification";
+import { PlaceDetailsModal } from "./PlaceDetailsModal";
 import { useDrag, useDrop, DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 
@@ -247,7 +248,7 @@ function DraggableDestinationCard({
         {/* Main Content */}
         <div className="flex-1 min-w-0">
           {/* Header Row: Drag Handle + Name + Delete */}
-          <div className="flex items-start gap-3 mb-3">
+          <div className="flex items-start gap-3 mb-2">
             {/* Drag Handle - Enhanced Animation */}
             <div 
               className="cursor-move pt-0.5 transition-all duration-150"
@@ -304,8 +305,15 @@ function DraggableDestinationCard({
             </Button>
           </div>
 
+          {/* Category Tag - Moved right below name */}
+          <div className="mb-2 ml-7">
+            <span className="inline-block bg-[#E8FBEA] text-[#16A34A] text-[13px] font-medium px-[10px] py-1 rounded-full">
+              {destination.placeType || "Tourist Attraction"}
+            </span>
+          </div>
+
           {/* Rating Section - Enhanced Star Animation */}
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-2 ml-7">
             <span className="text-[16px] font-semibold text-[#111827]">
               {destination.rating?.toFixed(1) || "4.5"}
             </span>
@@ -331,23 +339,8 @@ function DraggableDestinationCard({
             </span>
           </div>
 
-          {/* Category Tag */}
-          <div className="mb-3">
-            <span className="inline-block bg-[#E8FBEA] text-[#16A34A] text-[13px] font-medium px-[10px] py-1 rounded-full">
-              {destination.placeType || "Tourist Attraction"}
-            </span>
-          </div>
-
-          {/* Time Section */}
-          <div className="flex items-center gap-2 mb-3">
-            <Clock className="w-4 h-4 text-[#6B7280]" strokeWidth={2} />
-            <span className="text-[14px] font-medium text-[#374151]">
-              {destination.openHours || "9:00 AM - 6:00 PM"}
-            </span>
-          </div>
-
           {/* Price Level */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 ml-7">
             <DollarSign className="w-4 h-4 shrink-0 text-[#6B7280]" />
             <span className="text-[14px] text-[#374151]">
               {"💰".repeat(destination.priceLevel || 3)}
@@ -373,6 +366,15 @@ function DayViewContent({
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isAnyCardDragging, setIsAnyCardDragging] = useState(false);
+  const [selectedPlace, setSelectedPlace] = useState<Destination | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Handle destination click to open modal
+  const handleDestinationClick = (destination: Destination) => {
+    setSelectedPlace(destination);
+    setIsModalOpen(true);
+    onDestinationClick?.(destination);
+  };
 
   // AUTO-SCROLL EFFECT - Scrolls the list when dragging near edges
   useEffect(() => {
@@ -608,6 +610,7 @@ function DayViewContent({
   const currencySymbol = currency === "USD" ? "$" : "₫";
 
   return (
+    <>
     <Card
       className="h-full flex flex-col overflow-hidden transition-all duration-150 ease-out hover:-translate-y-[1px]"
       style={{
@@ -623,7 +626,7 @@ function DayViewContent({
       onMouseLeave={(e) => {
         e.currentTarget.style.boxShadow = '0 18px 40px rgba(15, 23, 42, 0.06)';
       }}
-      data-tutorial-card="destinations"
+      data-tutorial-card="day-view"
     >
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header - Styled Pill */}
@@ -657,7 +660,7 @@ function DayViewContent({
                 index={index}
                 moveCard={moveCard}
                 onRemove={removeDestination}
-                onClick={(dest) => onDestinationClick?.(dest)}
+                onClick={handleDestinationClick}
                 lang={lang}
                 isSelected={selectedCardId === destination.id}
                 onSelect={setSelectedCardId}
@@ -693,6 +696,21 @@ function DayViewContent({
         />
       )}
     </Card>
+
+    {/* Place Details Modal - Outside Card for full-screen backdrop */}
+    <PlaceDetailsModal
+      place={selectedPlace}
+      isOpen={isModalOpen}
+      onClose={() => setIsModalOpen(false)}
+      language={language}
+      showAddButton={false}
+      onDelete={(placeId) => {
+        removeDestination(placeId);
+        setIsModalOpen(false);
+      }}
+      showDeleteButton={true}
+    />
+    </>
   );
 }
 

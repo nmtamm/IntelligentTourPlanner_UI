@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, ChevronRight, ChevronLeft, BookOpen, CheckCircle2, Circle, Home, Settings, Map, Route, Save, Sparkles } from "lucide-react";
+import { X, ChevronRight, ChevronLeft, BookOpen, CheckCircle2, Circle, Home, Settings, Map, Route, Save, Sparkles, User, Calendar, DollarSign, MapPin, Navigation, MessageSquare, Layout } from "lucide-react";
 import { t } from "../locales/translations";
 import { useThemeColors } from "../hooks/useThemeColors";
 
@@ -8,21 +8,25 @@ interface TutorialStep {
   titleKey: string;
   descriptionKey: string;
   targetSelector: string;
-  position: "top" | "bottom" | "left" | "right" | "center";
+  position: "top" | "bottom" | "left" | "right" | "center" | "top-left" | "top-right" | "bottom-left" | "bottom-right";
 }
 
 interface Chapter {
   id: string;
   titleKey: string;
+  descriptionKey: string;
   icon: any;
+  color: string;
   steps: TutorialStep[];
 }
 
 const getTutorialChapters = (): Chapter[] => [
   {
-    id: "getting-started",
-    titleKey: "chapter_getting_started",
-    icon: Home,
+    id: "welcome-sidebar",
+    titleKey: "chapter_welcome_sidebar",
+    descriptionKey: "chapter_welcome_sidebar_desc",
+    icon: Layout,
+    color: "#004DB6",
     steps: [
       {
         id: "welcome",
@@ -32,144 +36,168 @@ const getTutorialChapters = (): Chapter[] => [
         position: "center",
       },
       {
-        id: "login",
-        titleKey: "tutorial_login_title",
-        descriptionKey: "tutorial_login_desc",
-        targetSelector: '[data-tutorial="login"]',
-        position: "bottom",
+        id: "sidebar-overview",
+        titleKey: "tutorial_sidebar_overview_title",
+        descriptionKey: "tutorial_sidebar_overview_desc",
+        targetSelector: '[data-tutorial="sidebar"]',
+        position: "right",
       },
       {
-        id: "language",
-        titleKey: "tutorial_language_title",
-        descriptionKey: "tutorial_language_desc",
-        targetSelector: '[data-tutorial="language"]',
-        position: "bottom",
+        id: "login-btn",
+        titleKey: "tutorial_login_btn_title",
+        descriptionKey: "tutorial_login_btn_desc",
+        targetSelector: '[data-tutorial="login-btn"]',
+        position: "bottom-right",
       },
       {
-        id: "currency",
-        titleKey: "tutorial_currency_title",
-        descriptionKey: "tutorial_currency_desc",
-        targetSelector: '[data-tutorial="currency"]',
-        position: "bottom",
-      },
-    ],
-  },
-  {
-    id: "planning",
-    titleKey: "chapter_planning",
-    icon: Settings,
-    steps: [
-      {
-        id: "generate-plan",
-        titleKey: "tutorial_generate_title",
-        descriptionKey: "tutorial_generate_desc",
-        targetSelector: '[data-tutorial="generate-plan"]',
-        position: "bottom",
+        id: "saved-plans-btn",
+        titleKey: "tutorial_saved_plans_btn_title",
+        descriptionKey: "tutorial_saved_plans_btn_desc",
+        targetSelector: '[data-tutorial="saved-plans-btn"]',
+        position: "bottom-right",
       },
       {
-        id: "trip-name",
-        titleKey: "tutorial_tripname_title",
-        descriptionKey: "tutorial_tripname_desc",
-        targetSelector: '[data-tutorial="trip-name"]',
-        position: "bottom",
+        id: "custom-mode-btn",
+        titleKey: "tutorial_custom_mode_btn_title",
+        descriptionKey: "tutorial_custom_mode_btn_desc",
+        targetSelector: '[data-tutorial="custom-mode-btn"]',
+        position: "right",
       },
       {
-        id: "members",
-        titleKey: "tutorial_members_title",
-        descriptionKey: "tutorial_members_desc",
-        targetSelector: '[data-tutorial="members"]',
-        position: "bottom",
+        id: "view-mode-btn",
+        titleKey: "tutorial_view_mode_btn_title",
+        descriptionKey: "tutorial_view_mode_btn_desc",
+        targetSelector: '[data-tutorial="view-mode-btn"]',
+        position: "right",
       },
       {
-        id: "start-date",
-        titleKey: "tutorial_startdate_title",
-        descriptionKey: "tutorial_startdate_desc",
-        targetSelector: '[data-tutorial="start-date"]',
-        position: "bottom",
+        id: "user-manual-btn",
+        titleKey: "tutorial_user_manual_btn_title",
+        descriptionKey: "tutorial_user_manual_btn_desc",
+        targetSelector: '[data-tutorial="user-manual-btn"]',
+        position: "right",
       },
       {
-        id: "end-date",
-        titleKey: "tutorial_enddate_title",
-        descriptionKey: "tutorial_enddate_desc",
-        targetSelector: '[data-tutorial="end-date"]',
-        position: "bottom",
+        id: "settings-btn",
+        titleKey: "tutorial_settings_btn_title",
+        descriptionKey: "tutorial_settings_btn_desc",
+        targetSelector: '[data-tutorial="settings-btn"]',
+        position: "top-right",
       },
     ],
   },
   {
-    id: "destinations",
-    titleKey: "chapter_destinations",
-    icon: Map,
+    id: "trip-details",
+    titleKey: "chapter_trip_details",
+    descriptionKey: "chapter_trip_details_desc",
+    icon: Calendar,
+    color: "#70C573",
     steps: [
       {
-        id: "day-tabs",
-        titleKey: "tutorial_daytabs_title",
-        descriptionKey: "tutorial_daytabs_desc",
+        id: "trip-details-card",
+        titleKey: "tutorial_trip_details_card_title",
+        descriptionKey: "tutorial_trip_details_card_desc",
+        targetSelector: '[data-tutorial-card="trip-details"]',
+        position: "bottom",
+      },
+      {
+        id: "day-selector",
+        titleKey: "tutorial_day_selector_title",
+        descriptionKey: "tutorial_day_selector_desc",
         targetSelector: '[data-tutorial="day-tabs"]',
         position: "bottom",
       },
       {
-        id: "view-all-days",
-        titleKey: "tutorial_viewalldays_title",
-        descriptionKey: "tutorial_viewalldays_desc",
-        targetSelector: '[data-tutorial="view-all-days"]',
-        position: "bottom",
-      },
-      {
-        id: "add-destination",
-        titleKey: "tutorial_adddest_title",
-        descriptionKey: "tutorial_adddest_desc",
-        targetSelector: '[data-tutorial="add-destination"]',
-        position: "bottom",
-      },
-      {
-        id: "add-cost-item",
-        titleKey: "tutorial_addcost_title",
-        descriptionKey: "tutorial_addcost_desc",
-        targetSelector: '[data-tutorial="add-cost-item"]',
-        position: "bottom",
-      },
-      {
-        id: "auto-estimate",
-        titleKey: "tutorial_autoestimate_title",
-        descriptionKey: "tutorial_autoestimate_desc",
-        targetSelector: '[data-tutorial="auto-estimate"]',
+        id: "add-day-btn",
+        titleKey: "tutorial_add_day_btn_title",
+        descriptionKey: "tutorial_add_day_btn_desc",
+        targetSelector: '[data-tutorial="add-day-btn"]',
         position: "bottom",
       },
     ],
   },
   {
-    id: "navigation",
-    titleKey: "chapter_navigation",
-    icon: Route,
+    id: "day-view",
+    titleKey: "chapter_day_view",
+    descriptionKey: "chapter_day_view_desc",
+    icon: MapPin,
+    color: "#5E885D",
     steps: [
       {
-        id: "optimize-route",
-        titleKey: "tutorial_optimize_title",
-        descriptionKey: "tutorial_optimize_desc",
-        targetSelector: '[data-tutorial="optimize-route"]',
+        id: "day-view-card",
+        titleKey: "tutorial_day_view_card_title",
+        descriptionKey: "tutorial_day_view_card_desc",
+        targetSelector: '[data-tutorial-card="day-view"]',
+        position: "left",
+      },
+    ],
+  },
+  {
+    id: "find-destination",
+    titleKey: "chapter_find_destination",
+    descriptionKey: "chapter_find_destination_desc",
+    icon: Map,
+    color: "#FF6B6B",
+    steps: [
+      {
+        id: "find-destination-card",
+        titleKey: "tutorial_find_destination_card_title",
+        descriptionKey: "tutorial_find_destination_card_desc",
+        targetSelector: '[data-tutorial-card="place-search"]',
+        position: "right",
+      },
+    ],
+  },
+  {
+    id: "chatbox",
+    titleKey: "chapter_chatbox",
+    descriptionKey: "chapter_chatbox_desc",
+    icon: MessageSquare,
+    color: "#8B5CF6",
+    steps: [
+      {
+        id: "chatbox-card",
+        titleKey: "tutorial_chatbox_card_title",
+        descriptionKey: "tutorial_chatbox_card_desc",
+        targetSelector: '[data-tutorial-card="chatbox"]',
+        position: "left",
+      },
+    ],
+  },
+  {
+    id: "map-route-guidance",
+    titleKey: "chapter_map_route_guidance",
+    descriptionKey: "chapter_map_route_guidance_desc",
+    icon: Navigation,
+    color: "#10B981",
+    steps: [
+      {
+        id: "map-view-card",
+        titleKey: "tutorial_map_view_card_title",
+        descriptionKey: "tutorial_map_view_card_desc",
+        targetSelector: '[data-tutorial-card="map-view"]',
+        position: "right",
+      },
+      {
+        id: "optimize-route-btn",
+        titleKey: "tutorial_optimize_route_btn_title",
+        descriptionKey: "tutorial_optimize_route_btn_desc",
+        targetSelector: '[data-tutorial="find-optimal-route"]',
         position: "bottom",
       },
       {
-        id: "map-view",
-        titleKey: "tutorial_mapview_title",
-        descriptionKey: "tutorial_mapview_desc",
-        targetSelector: '[data-tutorial="map-view"]',
-        position: "top",
+        id: "map-header-switch",
+        titleKey: "tutorial_map_header_switch_title",
+        descriptionKey: "tutorial_map_header_switch_desc",
+        targetSelector: '[data-tutorial="map-view-header"]',
+        position: "bottom-right",
       },
       {
-        id: "route-list",
-        titleKey: "tutorial_routelist_title",
-        descriptionKey: "tutorial_routelist_desc",
+        id: "route-guidance-mode",
+        titleKey: "tutorial_route_guidance_mode_title",
+        descriptionKey: "tutorial_route_guidance_mode_desc",
         targetSelector: '[data-tutorial="route-list"]',
-        position: "bottom",
-      },
-      {
-        id: "route-guidance",
-        titleKey: "tutorial_routeguidance_title",
-        descriptionKey: "tutorial_routeguidance_desc",
-        targetSelector: '[data-tutorial="route-guidance"]',
-        position: "center",
+        position: "top",
       },
     ],
   },
@@ -179,11 +207,13 @@ interface UserManualProps {
   isOpen: boolean;
   onClose: () => void;
   language: "EN" | "VI";
+  currentMode: "custom" | "view";
+  onModeChange: (mode: "custom" | "view") => void;
 }
 
 type ViewMode = "overview" | "tutorial";
 
-export function UserManual({ isOpen, onClose, language }: UserManualProps) {
+export function UserManual({ isOpen, onClose, language, currentMode, onModeChange }: UserManualProps) {
   const lang = language.toLowerCase() as "en" | "vi";
   const { primary, secondary, accent, light } = useThemeColors();
   const chapters = getTutorialChapters();
@@ -195,6 +225,8 @@ export function UserManual({ isOpen, onClose, language }: UserManualProps) {
   const [tooltipPosition, setTooltipPosition] = useState<any>(null);
   const [highlightBox, setHighlightBox] = useState<any>(null);
   const [cutoutBox, setCutoutBox] = useState<any>(null);
+  const [originalMode, setOriginalMode] = useState<"custom" | "view">("custom");
+  const [isSwitchingMode, setIsSwitchingMode] = useState(false);
 
   const currentChapter = chapters[currentChapterIndex];
   const currentStep = currentChapter?.steps[currentStepIndex];
@@ -226,8 +258,40 @@ export function UserManual({ isOpen, onClose, language }: UserManualProps) {
       setViewMode("overview");
       setCurrentChapterIndex(0);
       setCurrentStepIndex(0);
+      // Restore original mode when closing
+      if (originalMode !== currentMode) {
+        onModeChange(originalMode);
+      }
+    } else {
+      // When manual opens, save current mode and switch to Custom mode
+      setOriginalMode(currentMode);
+      if (currentMode !== "custom") {
+        onModeChange("custom");
+      }
     }
   }, [isOpen]);
+
+  // Auto-switch modes based on tutorial step
+  useEffect(() => {
+    if (!isOpen || viewMode !== "tutorial") return;
+
+    const currentChapter = chapters[currentChapterIndex];
+    const isMapChapter = currentChapter.id === "map-route-guidance";
+
+    // Switch to View mode for Chapter 6 (steps 15-18)
+    if (isMapChapter) {
+      if (currentMode !== "view") {
+        onModeChange("view");
+        setIsSwitchingMode(true);
+      }
+    } else {
+      // Switch to Custom mode for Chapters 1-5 (steps 1-14)
+      if (currentMode !== "custom") {
+        onModeChange("custom");
+        setIsSwitchingMode(true);
+      }
+    }
+  }, [isOpen, viewMode, currentChapterIndex, currentStepIndex, currentMode]);
 
   // Calculate position for the tooltip
   const getTooltipPosition = () => {
@@ -287,6 +351,38 @@ export function UserManual({ isOpen, onClose, language }: UserManualProps) {
           top: `${rect.top + scrollTop + rect.height / 2}px`,
           left: `${rect.right + scrollLeft + 20}px`,
           transform: "translateY(-50%)",
+          zIndex: 10002,
+        };
+      case "top-left":
+        return {
+          position: "absolute" as const,
+          top: `${rect.top + scrollTop - 20}px`,
+          left: `${rect.left + scrollLeft}px`,
+          transform: "translate(-100%, -100%)",
+          zIndex: 10002,
+        };
+      case "top-right":
+        return {
+          position: "absolute" as const,
+          top: `${rect.top + scrollTop - 20}px`,
+          left: `${rect.right + scrollLeft}px`,
+          transform: "translate(0%, -100%)",
+          zIndex: 10002,
+        };
+      case "bottom-left":
+        return {
+          position: "absolute" as const,
+          top: `${rect.bottom + scrollTop + 20}px`,
+          left: `${rect.left + scrollLeft}px`,
+          transform: "translate(-100%, 0%)",
+          zIndex: 10002,
+        };
+      case "bottom-right":
+        return {
+          position: "absolute" as const,
+          top: `${rect.bottom + scrollTop + 20}px`,
+          left: `${rect.right + scrollLeft}px`,
+          transform: "translate(0%, 0%)",
           zIndex: 10002,
         };
       default:
@@ -361,6 +457,14 @@ export function UserManual({ isOpen, onClose, language }: UserManualProps) {
   useEffect(() => {
     if (!isOpen || viewMode !== "tutorial") return;
 
+    // If we're switching mode, wait before updating positions
+    if (isSwitchingMode) {
+      const timer = setTimeout(() => {
+        setIsSwitchingMode(false);
+      }, 400); // Wait for mode switch animation
+      return () => clearTimeout(timer);
+    }
+
     const updatePositions = () => {
       setTooltipPosition(getTooltipPosition());
       setHighlightBox(getHighlightStyle());
@@ -388,7 +492,7 @@ export function UserManual({ isOpen, onClose, language }: UserManualProps) {
       window.removeEventListener("scroll", updatePositions, true);
       window.removeEventListener("resize", updatePositions);
     };
-  }, [isOpen, viewMode, currentChapterIndex, currentStepIndex]);
+  }, [isOpen, viewMode, currentChapterIndex, currentStepIndex, isSwitchingMode]);
 
   if (!isOpen) return null;
 
@@ -398,15 +502,18 @@ export function UserManual({ isOpen, onClose, language }: UserManualProps) {
       markStepCompleted(currentStep.id);
     }
 
-    if (isLastStepInChapter) {
-      if (isLastChapter) {
-        // Completed all chapters
-        setViewMode("overview");
-      } else {
-        // Move to next chapter
-        setCurrentChapterIndex(currentChapterIndex + 1);
-        setCurrentStepIndex(0);
+    // If we're on the last step, restore original mode before moving to overview
+    if (isLastStepInChapter && isLastChapter) {
+      // Restore original mode
+      if (originalMode !== currentMode && currentMode === "view") {
+        onModeChange(originalMode);
       }
+      // Completed all chapters
+      setViewMode("overview");
+    } else if (isLastStepInChapter) {
+      // Move to next chapter
+      setCurrentChapterIndex(currentChapterIndex + 1);
+      setCurrentStepIndex(0);
     } else {
       setCurrentStepIndex(currentStepIndex + 1);
     }
@@ -428,6 +535,10 @@ export function UserManual({ isOpen, onClose, language }: UserManualProps) {
   };
 
   const handleBackToOverview = () => {
+    // Restore original mode when going back to overview
+    if (originalMode !== currentMode) {
+      onModeChange(originalMode);
+    }
     setViewMode("overview");
   };
 
@@ -508,7 +619,7 @@ export function UserManual({ isOpen, onClose, language }: UserManualProps) {
                     {t("overallProgress", lang)}
                   </span>
                   <span className="text-white font-medium">
-                    {Math.round(getTotalProgress())}%
+                    {Math.min(100, Math.round(getTotalProgress()))}%
                   </span>
                 </div>
                 <div className="w-full bg-white/20 rounded-full h-2">

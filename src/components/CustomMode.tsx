@@ -2,12 +2,15 @@ import { useState, useEffect, useRef } from "react";
 import { DayView } from "./DayView";
 import { AllDaysView } from "./AllDaysView";
 import { MapView } from "./MapView";
+import { PlaceSearchView } from "./PlaceSearchView";
 import { RouteGuidance } from "./RouteGuidance";
 import { ErrorNotification } from "./ErrorNotification";
 import { ChatBox } from "./ChatBox";
 import { DayChip } from "./DayChip";
 import { AddDayButton } from "./AddDayButton";
 import { DateSelector } from "./DateSelector";
+import { ViewModePlacesGallery } from "./ViewModePlacesGallery";
+import { ViewModePlaceDetails } from "./ViewModePlaceDetails";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
@@ -25,6 +28,9 @@ import {
   Sparkles,
   Waypoints,
   Loader2,
+  NotebookPen,
+  Users,
+  MapPin,
 } from "lucide-react";
 import { DayPlan, Destination, CostItem } from "../types";
 import { toast } from "sonner@2.0.3";
@@ -37,6 +43,7 @@ import {
 } from "./ui/popover";
 import { format, addDays, differenceInDays } from "date-fns";
 import { t } from "../locales/translations";
+import { useThemeColors } from "../hooks/useThemeColors";
 
 interface CustomModeProps {
   tripData: { name: string; days: DayPlan[] };
@@ -68,6 +75,7 @@ export function CustomMode({
   showAllDaysOnLoad,
 }: CustomModeProps) {
   const lang = language.toLowerCase() as 'en' | 'vi';
+  const { primary, secondary } = useThemeColors();
   const [viewMode, setViewMode] = useState<ViewMode>("single");
   const [selectedDay, setSelectedDay] = useState<string>("1");
   const [routeGuidancePair, setRouteGuidancePair] = useState<
@@ -82,11 +90,11 @@ export function CustomMode({
   const [endDate, setEndDate] = useState<Date>();
   const [isDateUserInput, setIsDateUserInput] = useState(false);
   const [isMapExpanded, setIsMapExpanded] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [focusedDestination, setFocusedDestination] = useState<Destination | null>(null);
+  const [selectedPlaceInViewMode, setSelectedPlaceInViewMode] = useState<Destination | null>(null);
   
   // Ref for day chips scrollable container
   const dayChipsContainerRef = useRef<HTMLDivElement>(null);
@@ -416,177 +424,144 @@ export function CustomMode({
     (d) => d.id === selectedDay,
   );
 
-  // View Mode Layout: Map (50%) | DayView (50%), No ChatBox
+  // View Mode Layout: Map (50%) | ViewModePlacesGallery & ViewModePlaceDetails (50%), No ChatBox
   if (mode === "view") {
     return (
       <div className="flex gap-4 h-[calc(100vh-32px)]">
-        {/* Left Side - Map (50%) */}
-        <div className="flex-1 h-full">
-          <MapView
-            days={localTripData.days}
-            viewMode={viewMode}
-            selectedDayId={selectedDay}
-            onRouteGuidance={handleRouteGuidance}
-            resetMapView={resetToDefault}
-            language={language}
-            mode={mode}
-            onAddDestination={handleAddDestination}
-            onRemoveDestination={handleRemoveDestination}
-            focusedDestination={focusedDestination}
-            onOptimizeRoute={findOptimalRoute}
-            isOptimizing={isOptimizing}
-          />
-        </div>
-
-        {/* Right Side - Trip Info + DayView (50%) */}
-        <div className="flex-1 flex flex-col gap-4 overflow-hidden">
-          {/* Trip Info Card - View Mode (Read-Only) */}
+        {/* Left Side - Trip Details + Map (50%) */}
+        <div className="flex-1 h-full flex flex-col gap-4">
+          {/* Trip Details Card */}
           <Card 
-            className="shrink-0 rounded-[24px] border border-[#E5E7EB]"
+            className="shrink-0 rounded-[24px] border-0"
             style={{
-              background: '#FFFFFF',
-              boxShadow: '0 18px 40px rgba(15,23,42,0.06)',
-              paddingTop: '28px',
-              paddingLeft: '28px',
-              paddingRight: '28px',
-              paddingBottom: '12px'
+              background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+              boxShadow: '0 8px 32px rgba(0,77,182,0.08), 0 1px 3px rgba(0,0,0,0.05)',
+              paddingTop: '20px',
+              paddingLeft: '24px',
+              paddingRight: '24px',
+              paddingBottom: '20px'
             }}
           >
             <div className="space-y-3">
-              {/* Header / Title Area */}
-              <div className="mb-4">
-                <h3 className="flex items-center gap-2 text-gray-900 mb-1" style={{ fontSize: '20px', fontWeight: 600 }}>
-                  <Sparkles className="w-5 h-5" />
+              {/* Header with decorative line */}
+              <div className="relative pb-2">
+                <h3 className="flex items-center gap-2 text-gray-900" style={{ fontSize: '20px', fontWeight: 600 }}>
+                  <div className="flex items-center justify-center w-9 h-9 rounded-xl">
+                    <NotebookPen className="w-6 h-6" style={{ color: primary }} />
+                  </div>
                   {t('tripDetails', lang)}
                 </h3>
+                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r opacity-20" style={{
+                  backgroundImage: `linear-gradient(to right, ${primary}, ${secondary}, transparent)`
+                }}></div>
               </div>
 
-              {/* Trip Name & Number of Members - Read Only */}
-              <div className="flex gap-5">
-                <div 
-                  className="flex-1 rounded-xl border bg-gray-50 flex items-center px-4"
-                  style={{ 
-                    height: '40px',
-                    borderColor: '#E5E7EB',
-                  }}
-                >
-                  {localTripData.name ? (
-                    <span className="text-gray-900 text-sm">{localTripData.name}</span>
-                  ) : (
-                    <span className="text-gray-400 text-sm">{t('enterTripName', lang)}</span>
-                  )}
-                </div>
-
-                <div 
-                  className="flex-1 rounded-xl border bg-gray-50 flex items-center px-4"
-                  style={{ 
-                    height: '40px',
-                    borderColor: '#E5E7EB',
-                  }}
-                >
-                  {members ? (
-                    <span className="text-gray-900 text-sm">{members} {t('members', lang)}</span>
-                  ) : (
-                    <span className="text-gray-400 text-sm">{t('numberOfMembers', lang)}</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Date Display - Read Only */}
-              <div className="flex gap-5">
-                <div 
-                  className="flex-1 rounded-xl border bg-gray-50 flex items-center px-4"
-                  style={{ 
-                    height: '40px',
-                    borderColor: '#E5E7EB',
-                  }}
-                >
-                  {startDate ? (
-                    <span className="text-gray-900 text-sm">{format(startDate, "PPP")}</span>
-                  ) : (
-                    <span className="text-gray-400 text-sm">{t('startDate', lang)}</span>
-                  )}
-                </div>
-
-                <div 
-                  className="flex-1 rounded-xl border bg-gray-50 flex items-center px-4"
-                  style={{ 
-                    height: '40px',
-                    borderColor: '#E5E7EB',
-                  }}
-                >
-                  {endDate ? (
-                    <span className="text-gray-900 text-sm">{format(endDate, "PPP")}</span>
-                  ) : (
-                    <span className="text-gray-400 text-sm">{t('endDate', lang)}</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Day Navigation - Read Only (No Add/Delete) */}
-              <div className="flex items-center gap-3" data-tutorial="day-tabs">
-                <div className="flex gap-3 overflow-x-auto pb-1 flex-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100" style={{ overflowY: 'visible', paddingTop: '8px', paddingBottom: '8px' }}>
-                  {localTripData.days.map((day) => (
-                    <div key={day.id} id={`day-chip-view-${day.id}`}>
-                      <DayChip
-                        dayNumber={day.dayNumber}
-                        isSelected={selectedDay === day.id && viewMode === "single"}
-                        onClick={() => {
-                          setSelectedDay(day.id);
-                          setViewMode("single");
-                          
-                          // Scroll to show the clicked day chip
-                          setTimeout(() => {
-                            const chipElement = document.getElementById(`day-chip-view-${day.id}`);
-                            const container = chipElement?.parentElement?.parentElement;
-                            if (chipElement && container) {
-                              chipElement.scrollIntoView({
-                                behavior: 'smooth',
-                                block: 'nearest',
-                                inline: 'center'
-                              });
-                            }
-                          }, 50);
-                        }}
-                        onDelete={undefined}
-                        label={t('day', lang)}
-                        readOnly={true}
-                      />
+              {/* Trip Information - Read Only with icons */}
+              <div className="space-y-2.5">
+                {/* Trip Name */}
+                {localTripData.name && (
+                  <div className="flex items-center gap-3 p-2.5 rounded-xl bg-white/60 hover:bg-white/80 transition-colors duration-200 border border-gray-100/50">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-lg shrink-0" style={{
+                      background: `linear-gradient(to bottom right, ${primary}10, ${primary}05)`
+                    }}>
+                      <MapPin className="w-4 h-4" style={{ color: primary }} />
                     </div>
-                  ))}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs text-gray-500 mb-0.5">{t('tripName', lang)}</div>
+                      <div className="text-sm text-gray-900 truncate" style={{ fontWeight: 500 }}>{localTripData.name}</div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Members and Dates in one row */}
+                <div className="flex gap-2.5">
+                  {/* Members */}
+                  {members && (
+                    <div className="flex-1 flex items-center gap-2.5 p-2.5 rounded-xl bg-white/60 hover:bg-white/80 transition-colors duration-200 border border-gray-100/50">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-lg shrink-0" style={{
+                        background: `linear-gradient(to bottom right, ${secondary}10, ${secondary}05)`
+                      }}>
+                        <Users className="w-4 h-4" style={{ color: secondary }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-gray-500 mb-0.5">{t('numberOfMembers', lang)}</div>
+                        <div className="text-sm text-gray-900 whitespace-nowrap truncate" style={{ fontWeight: 500 }}>{members} {t('members', lang)}</div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Dates */}
+                  {startDate && endDate && (
+                    <div className="flex-1 flex items-center gap-2.5 p-2.5 rounded-xl bg-white/60 hover:bg-white/80 transition-colors duration-200 border border-gray-100/50">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-[#DAF9D8]/80 to-[#70C573]/10 shrink-0">
+                        <CalendarIcon className="w-4 h-4 text-[#5E885D]" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-gray-500 mb-0.5">{t('dates', lang)}</div>
+                        <div className="text-sm text-gray-900 truncate" style={{ fontWeight: 500 }}>
+                          {format(startDate, 'MMM d, yyyy')} - {format(endDate, 'MMM d, yyyy')}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           </Card>
 
-          {/* Main Content - DayView */}
-          <div className="flex-1 overflow-y-auto">
-            {viewMode === "single" && currentDay ? (
-              <DayView
-                day={currentDay}
-                onUpdate={(updatedDay) =>
-                  updateDay(selectedDay, updatedDay)
+          {/* Map View Card */}
+          <div className="flex-1 overflow-hidden">
+            <MapView
+              days={localTripData.days}
+              viewMode={viewMode}
+              selectedDayId={selectedDay}
+              onRouteGuidance={handleRouteGuidance}
+              resetMapView={resetToDefault}
+              language={language}
+              mode={mode}
+              onAddDestination={handleAddDestination}
+              onRemoveDestination={handleRemoveDestination}
+              focusedDestination={selectedPlaceInViewMode}
+              onOptimizeRoute={findOptimalRoute}
+              isOptimizing={isOptimizing}
+              onDestinationClick={(destination) => {
+                setSelectedPlaceInViewMode(destination);
+                // Find which day this destination belongs to and select that day
+                const dayWithDestination = localTripData.days.find((day) =>
+                  day.destinations.some((d) => d.id === destination.id)
+                );
+                if (dayWithDestination) {
+                  setSelectedDay(dayWithDestination.id);
                 }
-                currency={currency}
-                onCurrencyToggle={onCurrencyToggle}
-                language={language}
-                onDestinationClick={(destination) => setFocusedDestination(destination)}
-              />
-            ) : (
-              <AllDaysView
-                days={localTripData.days}
-                onUpdate={(updatedDays) =>
-                  handleTripDataChange({
-                    ...localTripData,
-                    days: updatedDays,
-                  })
-                }
-                currency={currency}
-                onCurrencyToggle={onCurrencyToggle}
-                language={language}
-              />
-            )}
+              }}
+            />
           </div>
+        </div>
+
+        {/* Right Side - Places Gallery + Place Details (50%) */}
+        <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+          {/* Places Gallery with Day Navigation */}
+          <ViewModePlacesGallery
+            days={localTripData.days}
+            selectedDayId={selectedDay}
+            selectedPlaceId={selectedPlaceInViewMode?.id || null}
+            onDaySelect={(dayId) => {
+              setSelectedDay(dayId);
+              setSelectedPlaceInViewMode(null);
+            }}
+            onPlaceSelect={(place) => {
+              setSelectedPlaceInViewMode(place);
+              setFocusedDestination(place);
+            }}
+            language={language}
+          />
+
+          {/* Place Details */}
+          <ViewModePlaceDetails
+            place={selectedPlaceInViewMode}
+            language={language}
+            currency={currency}
+          />
         </div>
 
         {/* Error Notification */}
@@ -605,21 +580,22 @@ export function CustomMode({
     <div className="flex gap-4 h-[calc(100vh-32px)]">
       {/* Left Side - 75% */}
       <div className="flex-1 flex gap-4 overflow-hidden">
-        {/* Left: Map - Full Height */}
+        {/* Left: Place Search - Full Height */}
         <div className="flex-1 relative h-full">
-          <MapView
-            days={localTripData.days}
-            viewMode={viewMode}
-            selectedDayId={selectedDay}
-            onRouteGuidance={handleRouteGuidance}
-            resetMapView={resetToDefault}
+          <PlaceSearchView
+            onAddDestination={async (place: Destination) => {
+              const day = localTripData.days.find((d) => d.id === selectedDay);
+              if (!day) return;
+
+              updateDay(selectedDay, {
+                ...day,
+                destinations: [...day.destinations, place],
+                optimizedRoute: [],
+              });
+              toast.success(t("destinationAdded", lang));
+            }}
             language={language}
-            mode={mode}
-            onAddDestination={handleAddDestination}
-            onRemoveDestination={handleRemoveDestination}
-            focusedDestination={focusedDestination}
-            onOptimizeRoute={findOptimalRoute}
-            isOptimizing={isOptimizing}
+            selectedDayId={selectedDay}
           />
         </div>
 
@@ -636,14 +612,44 @@ export function CustomMode({
               paddingRight: '28px',
               paddingBottom: '12px'
             }}
+            data-tutorial-card="trip-details"
           >
             <div className="space-y-3">
-              {/* Header / Title Area */}
-              <div className="mb-4">
-                <h3 className="flex items-center gap-2 text-gray-900 mb-1" style={{ fontSize: '20px', fontWeight: 600 }}>
-                  <Sparkles className="w-5 h-5" />
+              {/* Header / Title Area with Save Button */}
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="flex items-center gap-2 text-gray-900" style={{ fontSize: '20px', fontWeight: 600 }}>
+                  <NotebookPen className="w-6 h-6" style={{ color: primary }} />
                   {t('tripDetails', lang)}
                 </h3>
+                
+                {/* Save Plan Button */}
+                {isLoggedIn && (
+                  <Button
+                    size="sm"
+                    onClick={savePlan}
+                    disabled={!hasUnsavedChanges || isSaving}
+                    data-tutorial="save-plan"
+                    className="transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95 disabled:hover:scale-100 disabled:hover:shadow-none group"
+                    style={{ height: '32px' }}
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        {t('saving', lang)}...
+                      </>
+                    ) : hasUnsavedChanges ? (
+                      <>
+                        <Save className="w-4 h-4 mr-2 transition-transform duration-200 group-hover:scale-110 group-hover:-translate-y-0.5" />
+                        {t('savePlan', lang)}
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4 mr-2 transition-all duration-200 group-hover:scale-125" />
+                        {t('saved', lang)}
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
 
               {/* Trip Name & Number of Members */}
@@ -727,8 +733,8 @@ export function CustomMode({
               </div>
 
               {/* Day Navigation - Timeline Chips */}
-              <div className="flex items-center gap-3" data-tutorial="day-tabs">
-                <div className="flex gap-3 overflow-x-auto pb-1 flex-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100" style={{ overflowY: 'visible', paddingTop: '8px', paddingBottom: '8px' }} ref={dayChipsContainerRef}>
+              <div className="flex items-center gap-3">
+                <div className="flex gap-3 overflow-x-auto pb-1 flex-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100" style={{ overflowY: 'visible', paddingTop: '4px', paddingBottom: '4px' }} ref={dayChipsContainerRef} data-tutorial="day-tabs">
                   {localTripData.days.map((day) => (
                     <div key={day.id} id={`day-chip-${day.id}`}>
                       <DayChip
@@ -766,37 +772,6 @@ export function CustomMode({
                   label={t('addDay', lang)}
                 />
               </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-2 flex-wrap">
-                {isLoggedIn && (
-                  <Button
-                    size="sm"
-                    onClick={savePlan}
-                    disabled={!hasUnsavedChanges || isSaving}
-                    data-tutorial="save-plan"
-                    className="transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95 disabled:hover:scale-100 disabled:hover:shadow-none group"
-                    style={{ height: '40px' }}
-                  >
-                    {isSaving ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        {t('saving', lang)}...
-                      </>
-                    ) : hasUnsavedChanges ? (
-                      <>
-                        <Save className="w-4 h-4 mr-2 transition-transform duration-200 group-hover:scale-110 group-hover:-translate-y-0.5" />
-                        {t('savePlan', lang)}
-                      </>
-                    ) : (
-                      <>
-                        <Check className="w-4 h-4 mr-2 transition-all duration-200 group-hover:scale-125" />
-                        {t('saved', lang)}
-                      </>
-                    )}
-                  </Button>
-                )}
-              </div>
             </div>
           </Card>
 
@@ -831,8 +806,8 @@ export function CustomMode({
         </div>
       </div>
 
-      {/* Right Side - Chat Box (25%) */}
-      <div className="w-1/4 min-w-[300px] h-full">
+      {/* Right Side - Chat Box (30%) */}
+      <div className="w-3/10 min-w-[300px] h-full">
         <ChatBox language={language} />
       </div>
 

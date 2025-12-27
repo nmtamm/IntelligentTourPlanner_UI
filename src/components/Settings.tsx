@@ -28,6 +28,17 @@ export function Settings({
   const { themeType, setThemeType, currentTheme } = useTheme();
   const { primary, secondary, accent, light, primaryDark } = useThemeColors();
   
+  // State for bounce animations
+  const [currencyUSDHovered, setCurrencyUSDHovered] = useState(false);
+  const [currencyVNDHovered, setCurrencyVNDHovered] = useState(false);
+  const [languageENHovered, setLanguageENHovered] = useState(false);
+  const [languageVIHovered, setLanguageVIHovered] = useState(false);
+  
+  const [currencyUSDPressed, setCurrencyUSDPressed] = useState(false);
+  const [currencyVNDPressed, setCurrencyVNDPressed] = useState(false);
+  const [languageENPressed, setLanguageENPressed] = useState(false);
+  const [languageVIPressed, setLanguageVIPressed] = useState(false);
+  
   const isOpen = asModal ? externalIsOpen : internalIsOpen;
   const setIsOpen = asModal ? (value: boolean) => {
     if (!value && externalOnClose) externalOnClose();
@@ -76,32 +87,66 @@ export function Settings({
                       {language === 'EN' ? 'Currency' : 'Tiền tệ'}
                     </label>
                     <div className="flex gap-2">
-                      <Button
-                        variant={currency === 'USD' ? 'default' : 'outline'}
-                        style={currency === 'USD' ? { backgroundColor: primary, color: 'white' } : { backgroundColor: `${light}40` }}
-                        className="flex-1"
+                      <button
                         onClick={() => {
                           if (currency !== 'USD') onCurrencyToggle();
                         }}
-                        onMouseEnter={(e) => currency === 'USD' && (e.currentTarget.style.backgroundColor = primaryDark)}
-                        onMouseLeave={(e) => currency === 'USD' && (e.currentTarget.style.backgroundColor = primary)}
+                        onMouseEnter={() => setCurrencyUSDHovered(true)}
+                        onMouseLeave={() => {
+                          setCurrencyUSDHovered(false);
+                          setCurrencyUSDPressed(false);
+                        }}
+                        onMouseDown={() => setCurrencyUSDPressed(true)}
+                        onMouseUp={() => setCurrencyUSDPressed(false)}
+                        className="flex-1 rounded-md flex items-center justify-center gap-1 py-2 px-4 transition-all"
+                        style={{
+                          backgroundColor: currency === 'USD' ? primary : `${light}40`,
+                          color: currency === 'USD' ? 'white' : '#374151',
+                          border: currency === 'USD' ? 'none' : '1px solid #E5E7EB',
+                          cursor: 'pointer',
+                          transform: currencyUSDPressed 
+                            ? 'scale(0.95)' 
+                            : (currencyUSDHovered ? 'scale(1.05)' : 'scale(1.00)'),
+                          boxShadow: currencyUSDPressed
+                            ? '0 2px 8px rgba(0,77,182,0.15)'
+                            : (currencyUSDHovered ? '0 4px 16px rgba(0,77,182,0.25)' : '0 2px 8px rgba(0,0,0,0.05)'),
+                          transitionDuration: currencyUSDPressed ? '100ms' : '200ms',
+                          transitionTimingFunction: currencyUSDPressed ? 'ease-out' : 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+                        }}
                       >
-                        <DollarSign className="w-4 h-4 mr-1" />
-                        USD
-                      </Button>
-                      <Button
-                        variant={currency === 'VND' ? 'default' : 'outline'}
-                        style={currency === 'VND' ? { backgroundColor: primary, color: 'white' } : { backgroundColor: `${light}40` }}
-                        className="flex-1"
+                        <DollarSign className="w-4 h-4" />
+                        <span className="font-medium">USD</span>
+                      </button>
+                      <button
                         onClick={() => {
                           if (currency !== 'VND') onCurrencyToggle();
                         }}
-                        onMouseEnter={(e) => currency === 'VND' && (e.currentTarget.style.backgroundColor = primaryDark)}
-                        onMouseLeave={(e) => currency === 'VND' && (e.currentTarget.style.backgroundColor = primary)}
+                        onMouseEnter={() => setCurrencyVNDHovered(true)}
+                        onMouseLeave={() => {
+                          setCurrencyVNDHovered(false);
+                          setCurrencyVNDPressed(false);
+                        }}
+                        onMouseDown={() => setCurrencyVNDPressed(true)}
+                        onMouseUp={() => setCurrencyVNDPressed(false)}
+                        className="flex-1 rounded-md flex items-center justify-center gap-1 py-2 px-4 transition-all"
+                        style={{
+                          backgroundColor: currency === 'VND' ? primary : `${light}40`,
+                          color: currency === 'VND' ? 'white' : '#374151',
+                          border: currency === 'VND' ? 'none' : '1px solid #E5E7EB',
+                          cursor: 'pointer',
+                          transform: currencyVNDPressed 
+                            ? 'scale(0.95)' 
+                            : (currencyVNDHovered ? 'scale(1.05)' : 'scale(1.00)'),
+                          boxShadow: currencyVNDPressed
+                            ? '0 2px 8px rgba(0,77,182,0.15)'
+                            : (currencyVNDHovered ? '0 4px 16px rgba(0,77,182,0.25)' : '0 2px 8px rgba(0,0,0,0.05)'),
+                          transitionDuration: currencyVNDPressed ? '100ms' : '200ms',
+                          transitionTimingFunction: currencyVNDPressed ? 'ease-out' : 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+                        }}
                       >
-                        <span className="mr-1">₫</span>
-                        VND
-                      </Button>
+                        <span>₫</span>
+                        <span className="font-medium">VND</span>
+                      </button>
                     </div>
                   </div>
 
@@ -111,32 +156,66 @@ export function Settings({
                       {language === 'EN' ? 'Language' : 'Ngôn ngữ'}
                     </label>
                     <div className="flex gap-2">
-                      <Button
-                        variant={language === 'EN' ? 'default' : 'outline'}
-                        style={language === 'EN' ? { backgroundColor: primary, color: 'white' } : { backgroundColor: `${light}40` }}
-                        className="flex-1"
+                      <button
                         onClick={() => {
                           if (language !== 'EN') onLanguageToggle();
                         }}
-                        onMouseEnter={(e) => language === 'EN' && (e.currentTarget.style.backgroundColor = primaryDark)}
-                        onMouseLeave={(e) => language === 'EN' && (e.currentTarget.style.backgroundColor = primary)}
+                        onMouseEnter={() => setLanguageENHovered(true)}
+                        onMouseLeave={() => {
+                          setLanguageENHovered(false);
+                          setLanguageENPressed(false);
+                        }}
+                        onMouseDown={() => setLanguageENPressed(true)}
+                        onMouseUp={() => setLanguageENPressed(false)}
+                        className="flex-1 rounded-md flex items-center justify-center gap-1 py-2 px-4 transition-all"
+                        style={{
+                          backgroundColor: language === 'EN' ? primary : `${light}40`,
+                          color: language === 'EN' ? 'white' : '#374151',
+                          border: language === 'EN' ? 'none' : '1px solid #E5E7EB',
+                          cursor: 'pointer',
+                          transform: languageENPressed 
+                            ? 'scale(0.95)' 
+                            : (languageENHovered ? 'scale(1.05)' : 'scale(1.00)'),
+                          boxShadow: languageENPressed
+                            ? '0 2px 8px rgba(0,77,182,0.15)'
+                            : (languageENHovered ? '0 4px 16px rgba(0,77,182,0.25)' : '0 2px 8px rgba(0,0,0,0.05)'),
+                          transitionDuration: languageENPressed ? '100ms' : '200ms',
+                          transitionTimingFunction: languageENPressed ? 'ease-out' : 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+                        }}
                       >
-                        <Globe className="w-4 h-4 mr-1" />
-                        English
-                      </Button>
-                      <Button
-                        variant={language === 'VI' ? 'default' : 'outline'}
-                        style={language === 'VI' ? { backgroundColor: primary, color: 'white' } : { backgroundColor: `${light}40` }}
-                        className="flex-1"
+                        <Globe className="w-4 h-4" />
+                        <span className="font-medium">English</span>
+                      </button>
+                      <button
                         onClick={() => {
                           if (language !== 'VI') onLanguageToggle();
                         }}
-                        onMouseEnter={(e) => language === 'VI' && (e.currentTarget.style.backgroundColor = primaryDark)}
-                        onMouseLeave={(e) => language === 'VI' && (e.currentTarget.style.backgroundColor = primary)}
+                        onMouseEnter={() => setLanguageVIHovered(true)}
+                        onMouseLeave={() => {
+                          setLanguageVIHovered(false);
+                          setLanguageVIPressed(false);
+                        }}
+                        onMouseDown={() => setLanguageVIPressed(true)}
+                        onMouseUp={() => setLanguageVIPressed(false)}
+                        className="flex-1 rounded-md flex items-center justify-center gap-1 py-2 px-4 transition-all"
+                        style={{
+                          backgroundColor: language === 'VI' ? primary : `${light}40`,
+                          color: language === 'VI' ? 'white' : '#374151',
+                          border: language === 'VI' ? 'none' : '1px solid #E5E7EB',
+                          cursor: 'pointer',
+                          transform: languageVIPressed 
+                            ? 'scale(0.95)' 
+                            : (languageVIHovered ? 'scale(1.05)' : 'scale(1.00)'),
+                          boxShadow: languageVIPressed
+                            ? '0 2px 8px rgba(0,77,182,0.15)'
+                            : (languageVIHovered ? '0 4px 16px rgba(0,77,182,0.25)' : '0 2px 8px rgba(0,0,0,0.05)'),
+                          transitionDuration: languageVIPressed ? '100ms' : '200ms',
+                          transitionTimingFunction: languageVIPressed ? 'ease-out' : 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+                        }}
                       >
-                        <Globe className="w-4 h-4 mr-1" />
-                        Tiếng Việt
-                      </Button>
+                        <Globe className="w-4 h-4" />
+                        <span className="font-medium">Tiếng Việt</span>
+                      </button>
                     </div>
                   </div>
 

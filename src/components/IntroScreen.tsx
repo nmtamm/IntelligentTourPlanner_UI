@@ -1,67 +1,67 @@
 import { useState } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { MapPin, Mail, Lock, User, ArrowRight, Globe, Plane, Map } from "lucide-react";
+import { Mail, Lock, User, Globe, MapPin, Compass, Flower2, Waves, Sun, Palmtree, Eye, EyeOff } from "lucide-react";
 import { useThemeColors } from "../hooks/useThemeColors";
+import heroImage from "figma:asset/2c7967513e41453aacd651ecfb544f81dd56d846.png";
 
 interface IntroScreenProps {
-  onContinue: (userEmail?: string) => void;
+  onContinue: (userEmail?: string, username?: string, password?: string) => void;
   language: 'EN' | 'VI';
   onLanguageChange: (lang: 'EN' | 'VI') => void;
 }
 
 export function IntroScreen({ onContinue, language, onLanguageChange }: IntroScreenProps) {
-  const [mode, setMode] = useState<'intro' | 'login' | 'register'>('intro');
+  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoginBtnHovered, setIsLoginBtnHovered] = useState(false);
+  const [isLoginBtnPressed, setIsLoginBtnPressed] = useState(false);
+  const [isRegisterBtnHovered, setIsRegisterBtnHovered] = useState(false);
+  const [isRegisterBtnPressed, setIsRegisterBtnPressed] = useState(false);
   
-  const { primary, secondary, accent, light, primaryDark, secondaryDark } = useThemeColors();
+  const { primary } = useThemeColors();
 
   const t = {
     en: {
-      title: 'Intelligent Tour Planner',
-      subtitle: 'Plan your perfect journey with AI-powered route optimization',
+      appName: 'Intelligent Tour Planner',
+      tagline: 'Discover the Beauty of Vietnam',
       login: 'Login',
       register: 'Register',
-      continueAsGuest: 'Continue as Guest',
-      email: 'Email',
+      registration: 'Create Account',
+      welcomeTitle: 'Welcome to Vietnam',
+      welcomeSubtitle: 'Start Your Journey',
+      registerTitle: 'Join Our Community',
+      registerSubtitle: 'Explore Vietnam Together',
+      dontHaveAccount: "Don't have an account?",
+      alreadyHaveAccount: 'Already have an account?',
+      username: 'Username',
+      email: 'Email Address',
       password: 'Password',
-      fullName: 'Full Name',
-      loginButton: 'Sign In',
-      registerButton: 'Create Account',
-      backToHome: 'Back',
-      haveAccount: 'Already have an account?',
-      noAccount: "Don't have an account?",
-      feature1: 'Smart Route Optimization',
-      feature2: 'Multi-Day Planning',
-      feature3: 'Cost Tracking',
-      feature4: 'GPS Integration',
-      welcomeBack: 'Welcome Back',
-      createAccount: 'Create Account',
-      startPlanning: 'Start Planning Your Journey',
+      forgotPassword: 'Forgot Password?',
+      continueAsGuest: 'Continue as Guest',
+      startExploring: 'Start Exploring',
     },
     vi: {
-      title: 'Lập Kế Hoạch Du Lịch Thông Minh',
-      subtitle: 'Lên kế hoạch chuyến đi hoàn hảo với tối ưu hóa lộ trình AI',
+      appName: 'Intelligent Tour Planner',
+      tagline: 'Khám phá vẻ đẹp Việt Nam',
       login: 'Đăng nhập',
       register: 'Đăng ký',
-      continueAsGuest: 'Tiếp tục với tư cách khách',
-      email: 'Email',
+      registration: 'Tạo tài khoản',
+      welcomeTitle: 'Chào mừng đến Việt Nam',
+      welcomeSubtitle: 'Bắt đầu hành trình',
+      registerTitle: 'Tham gia cộng đồng',
+      registerSubtitle: 'Khám phá Việt Nam cùng nhau',
+      dontHaveAccount: 'Chưa có tài khoản?',
+      alreadyHaveAccount: 'Đã có tài khoản?',
+      username: 'Tên đăng nhập',
+      email: 'Địa chỉ Email',
       password: 'Mật khẩu',
-      fullName: 'Họ và tên',
-      loginButton: 'Đăng nhập',
-      registerButton: 'Tạo tài khoản',
-      backToHome: 'Quay lại',
-      haveAccount: 'Đã có tài khoản?',
-      noAccount: 'Chưa có tài khoản?',
-      feature1: 'Tối ưu hóa tuyến đường thông minh',
-      feature2: 'Lập kế hoạch nhiều ngày',
-      feature3: 'Theo dõi chi phí',
-      feature4: 'Tích hợp GPS',
-      welcomeBack: 'Chào mừng trở lại',
-      createAccount: 'Tạo tài khoản',
-      startPlanning: 'Bắt đầu lập kế hoạch chuyến đi',
+      forgotPassword: 'Quên mật khẩu?',
+      continueAsGuest: 'Tiếp tục với tư cách khách',
+      startExploring: 'Bắt đầu khám phá',
     },
   };
 
@@ -69,412 +69,401 @@ export function IntroScreen({ onContinue, language, onLanguageChange }: IntroScr
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock login - in real app, validate credentials
-    onContinue(email);
+    onContinue(email, username, password);
   };
 
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock register - in real app, create account
-    onContinue(email);
+    onContinue(email, username, password);
   };
 
-  // Intro Screen
-  if (mode === 'intro') {
-    return (
-      <div 
-        className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
-        style={{
-          background: `linear-gradient(to bottom right, ${primary}, ${primaryDark}, ${primary}E6)`,
-        }}
-      >
-        {/* Animated Background Elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-white/5 rounded-full blur-3xl animate-pulse" />
-          <div 
-            className="absolute bottom-20 right-10 w-96 h-96 rounded-full blur-3xl animate-pulse" 
-            style={{ backgroundColor: `${secondary}1A`, animationDelay: '1s' }}
-          />
-          <div 
-            className="absolute top-1/2 left-1/2 w-80 h-80 rounded-full blur-3xl animate-pulse" 
-            style={{ backgroundColor: `${light}0D`, animationDelay: '2s' }}
-          />
-        </div>
+  const toggleMode = () => {
+    setIsLogin(!isLogin);
+  };
 
-        {/* Language Switcher */}
-        <div className="absolute top-6 right-6 z-20">
-          <button
-            onClick={() => onLanguageChange(language === 'EN' ? 'VI' : 'EN')}
-            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white rounded-full transition-all duration-300 border border-white/20"
-          >
-            <Globe className="w-4 h-4" />
-            <span className="text-sm font-medium">{language === 'EN' ? 'Tiếng Việt' : 'English'}</span>
-          </button>
-        </div>
-
-        {/* Main Content */}
-        <div className="relative z-10 max-w-6xl w-full">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            {/* Left Side - Branding */}
-            <div className="text-white space-y-8">
-              {/* Logo & Title */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20">
-                    <MapPin className="w-8 h-8 text-white" />
-                  </div>
-                  <div>
-                    <h1 className="text-4xl text-white">{t[lang].title}</h1>
-                  </div>
-                </div>
-                <p className="text-xl text-white/80">{t[lang].subtitle}</p>
-              </div>
-
-              {/* Features */}
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  { icon: Map, text: t[lang].feature1 },
-                  { icon: Plane, text: t[lang].feature2 },
-                  { icon: Globe, text: t[lang].feature3 },
-                  { icon: MapPin, text: t[lang].feature4 },
-                ].map((feature, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-start gap-3 p-4 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 hover:bg-white/10 transition-all duration-300"
-                  >
-                    <feature.icon 
-                      className="w-5 h-5 shrink-0 mt-0.5" 
-                      style={{ color: secondary }}
-                    />
-                    <span className="text-sm text-white/90">{feature.text}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Right Side - Auth Options */}
-            <div className="bg-white rounded-3xl p-8 shadow-2xl space-y-6">
-              <div className="text-center space-y-2">
-                <h2 className="text-2xl text-gray-900">{t[lang].startPlanning}</h2>
-                <p className="text-gray-600">{language === 'EN' ? 'Choose how you want to get started' : 'Chọn cách bạn muốn bắt đầu'}</p>
-              </div>
-
-              <div className="space-y-3">
-                {/* Login Button */}
-                <button
-                  onClick={() => setMode('login')}
-                  style={{ 
-                    backgroundColor: primary,
-                    color: 'white',
-                    transition: 'all 0.3s'
-                  }}
-                  className="w-full h-12 text-base rounded-md inline-flex items-center justify-center gap-2 font-medium shadow-sm hover:scale-[1.02] hover:shadow-lg"
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = primaryDark}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = primary}
-                >
-                  <User className="w-5 h-5" />
-                  {t[lang].login}
-                </button>
-
-                {/* Register Button */}
-                <button
-                  onClick={() => setMode('register')}
-                  style={{ 
-                    backgroundColor: secondary,
-                    color: 'white',
-                    transition: 'all 0.3s'
-                  }}
-                  className="w-full h-12 text-base rounded-md inline-flex items-center justify-center gap-2 font-medium shadow-sm hover:scale-[1.02] hover:shadow-lg"
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = accent}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = secondary}
-                >
-                  <Mail className="w-5 h-5" />
-                  {t[lang].register}
-                </button>
-
-                {/* Divider */}
-                <div className="relative py-4">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-200" />
-                  </div>
-                  <div className="relative flex justify-center">
-                    <span className="bg-white px-4 text-sm text-gray-500">
-                      {language === 'EN' ? 'or' : 'hoặc'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Continue as Guest */}
-                <button
-                  onClick={() => onContinue()}
-                  style={{ 
-                    borderColor: primary,
-                    color: '#374151',
-                    backgroundColor: 'white',
-                    transition: 'all 0.3s'
-                  }}
-                  className="w-full h-12 text-base border-2 rounded-md inline-flex items-center justify-center gap-2 font-medium hover:scale-[1.02]"
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = primary;
-                    e.currentTarget.style.backgroundColor = `${primary}0D`;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = primary;
-                    e.currentTarget.style.backgroundColor = 'white';
-                  }}
-                >
-                  <ArrowRight className="w-5 h-5" />
-                  {t[lang].continueAsGuest}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Login Screen
-  if (mode === 'login') {
-    return (
-      <div 
-        className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
-        style={{
-          background: `linear-gradient(to bottom right, ${primary}, ${primaryDark}, ${primary}E6)`,
-        }}
-      >
-        {/* Animated Background */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-white/5 rounded-full blur-3xl animate-pulse" />
-          <div 
-            className="absolute bottom-20 right-10 w-96 h-96 rounded-full blur-3xl animate-pulse" 
-            style={{ backgroundColor: `${secondary}1A`, animationDelay: '1s' }}
-          />
-        </div>
-
-        {/* Language Switcher */}
-        <div className="absolute top-6 right-6 z-20">
-          <button
-            onClick={() => onLanguageChange(language === 'EN' ? 'VI' : 'EN')}
-            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white rounded-full transition-all duration-300 border border-white/20"
-          >
-            <Globe className="w-4 h-4" />
-            <span className="text-sm font-medium">{language === 'EN' ? 'Tiếng Việt' : 'English'}</span>
-          </button>
-        </div>
-
-        {/* Login Form */}
-        <div className="relative z-10 w-full max-w-md">
-          <div className="bg-white rounded-3xl p-8 shadow-2xl">
-            {/* Header */}
-            <div className="text-center space-y-2 mb-8">
-              <div 
-                className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-                style={{ backgroundColor: `${primary}1A` }}
-              >
-                <User className="w-8 h-8" style={{ color: primary }} />
-              </div>
-              <h2 className="text-2xl text-gray-900">{t[lang].welcomeBack}</h2>
-              <p className="text-gray-600">{language === 'EN' ? 'Sign in to continue your journey' : 'Đăng nhập để tiếp tục hành trình'}</p>
-            </div>
-
-            {/* Form */}
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm text-gray-700">{t[lang].email}</label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <Input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder={language === 'EN' ? 'Enter your email' : 'Nhập email của bạn'}
-                    className="pl-10 h-12"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm text-gray-700">{t[lang].password}</label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <Input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder={language === 'EN' ? 'Enter your password' : 'Nhập mật khẩu'}
-                    className="pl-10 h-12"
-                    required
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                style={{ 
-                  backgroundColor: primary,
-                  color: 'white',
-                  transition: 'all 0.3s'
-                }}
-                className="w-full h-12 text-base mt-6 rounded-md inline-flex items-center justify-center gap-2 font-medium shadow-sm hover:scale-[1.02] hover:shadow-lg"
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = primaryDark}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = primary}
-              >
-                {t[lang].loginButton}
-                <ArrowRight className="w-5 h-5" />
-              </button>
-            </form>
-
-            {/* Footer */}
-            <div className="mt-6 text-center space-y-3">
-              <p className="text-sm text-gray-600">
-                {t[lang].noAccount}{' '}
-                <button
-                  onClick={() => setMode('register')}
-                  style={{ color: primary }}
-                  className="hover:underline font-medium"
-                >
-                  {t[lang].register}
-                </button>
-              </p>
-              <button
-                onClick={() => setMode('intro')}
-                className="text-sm text-gray-500 hover:text-gray-700"
-              >
-                ← {t[lang].backToHome}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Register Screen
   return (
     <div 
-      className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
+      className="min-h-screen flex items-center justify-center p-4 md:p-8 relative overflow-hidden"
       style={{
-        background: `linear-gradient(to bottom right, ${secondary}, ${accent}, ${secondaryDark})`,
+        background: 'linear-gradient(135deg, #FFE5D9 0%, #FFC9A8 25%, #FFB5C5 50%, #C5A3D6 75%, #9ECDE8 100%)',
       }}
     >
-      {/* Animated Background */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-white/5 rounded-full blur-3xl animate-pulse" />
-        <div 
-          className="absolute bottom-20 right-10 w-96 h-96 rounded-full blur-3xl animate-pulse" 
-          style={{ backgroundColor: `${light}1A`, animationDelay: '1s' }}
-        />
+      {/* Decorative Floating Lotus and Vietnamese Elements */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {/* Lotus flowers */}
+        <div className="absolute top-16 left-12 animate-bounce" style={{ animationDuration: '4s' }}>
+          <Flower2 className="w-14 h-14" style={{ color: '#FF69B4', opacity: 0.3 }} />
+        </div>
+        <div className="absolute top-32 right-24 animate-pulse" style={{ animationDuration: '5s' }}>
+          <Flower2 className="w-12 h-12" style={{ color: '#FFB5C5', opacity: 0.35 }} />
+        </div>
+        <div className="absolute bottom-24 left-24 animate-bounce" style={{ animationDuration: '4.5s' }}>
+          <Flower2 className="w-16 h-16" style={{ color: '#FFC1CC', opacity: 0.25 }} />
+        </div>
+        <div className="absolute bottom-32 right-16 animate-pulse" style={{ animationDuration: '6s' }}>
+          <Flower2 className="w-13 h-13" style={{ color: '#FFB347', opacity: 0.3 }} />
+        </div>
+        
+        {/* Water waves */}
+        <div className="absolute top-1/4 left-1/4 animate-pulse" style={{ animationDuration: '5s' }}>
+          <Waves className="w-10 h-10" style={{ color: '#5B9BD5', opacity: 0.25 }} />
+        </div>
+        <div className="absolute bottom-1/3 right-1/3 animate-pulse" style={{ animationDuration: '5.5s' }}>
+          <Waves className="w-12 h-12" style={{ color: '#4A90E2', opacity: 0.2 }} />
+        </div>
+        
+        {/* Sun and palm trees */}
+        <div className="absolute top-20 right-12 animate-pulse" style={{ animationDuration: '7s' }}>
+          <Sun className="w-14 h-14" style={{ color: '#FFD700', opacity: 0.3 }} />
+        </div>
+        <div className="absolute bottom-20 left-1/3 animate-bounce" style={{ animationDuration: '4s' }}>
+          <Palmtree className="w-11 h-11" style={{ color: '#7CB342', opacity: 0.3 }} />
+        </div>
+        
+        {/* Map pins for locations */}
+        <div className="absolute top-1/3 right-1/4 animate-bounce" style={{ animationDuration: '3.5s' }}>
+          <MapPin className="w-9 h-9" style={{ color: '#FF6B6B', opacity: 0.3 }} />
+        </div>
       </div>
 
       {/* Language Switcher */}
-      <div className="absolute top-6 right-6 z-20">
+      <div className="absolute top-6 right-6 z-30">
         <button
           onClick={() => onLanguageChange(language === 'EN' ? 'VI' : 'EN')}
-          className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white rounded-full transition-all duration-300 border border-white/20"
+          className="flex items-center gap-2 px-5 py-2.5 bg-white/90 hover:bg-white backdrop-blur-md rounded-full transition-all duration-300 shadow-lg hover:shadow-xl border-2"
+          style={{ 
+            borderColor: '#FFB347',
+            color: '#2B7BA8'
+          }}
         >
-          <Globe className="w-4 h-4" />
-          <span className="text-sm font-medium">{language === 'EN' ? 'Tiếng Việt' : 'English'}</span>
+          <Globe className="w-5 h-5" />
+          <span className="font-semibold">{language === 'EN' ? 'Tiếng Việt' : 'English'}</span>
         </button>
       </div>
 
-      {/* Register Form */}
-      <div className="relative z-10 w-full max-w-md">
-        <div className="bg-white rounded-3xl p-8 shadow-2xl">
-          {/* Header */}
-          <div className="text-center space-y-2 mb-8">
-            <div 
-              className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-              style={{ backgroundColor: `${secondary}1A` }}
-            >
-              <Mail className="w-8 h-8" style={{ color: secondary }} />
+      {/* Continue as Guest Button */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30">
+        <button
+          onClick={() => onContinue()}
+          className="px-8 py-3.5 bg-white/95 hover:bg-white backdrop-blur-md rounded-full transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-105 font-semibold border-2"
+          style={{
+            borderColor: '#FFB347',
+            color: '#2B7BA8'
+          }}
+        >
+          {t[lang].continueAsGuest}
+        </button>
+      </div>
+
+      {/* Main Container */}
+      <div className="relative w-full max-w-6xl">
+        <div 
+          className="relative bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl overflow-hidden border-2"
+          style={{ 
+            minHeight: '600px',
+            borderColor: '#FFB347'
+          }}
+        >
+          {/* Beautiful Background Image Panel */}
+          <div
+            className="absolute inset-0 w-1/2 z-10 transition-all duration-700 ease-in-out overflow-hidden"
+            style={{
+              transform: isLogin ? 'translateX(0%)' : 'translateX(100%)',
+            }}
+          >
+            {/* Background Image with Overlay */}
+            <div className="absolute inset-0">
+              <img 
+                src={heroImage} 
+                alt="Vietnam Tourism"
+                className="w-full h-full object-cover"
+              />
+              <div 
+                className="absolute inset-0"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(42, 123, 168, 0.85) 0%, rgba(255, 179, 71, 0.75) 100%)'
+                }}
+              />
             </div>
-            <h2 className="text-2xl text-gray-900">{t[lang].createAccount}</h2>
-            <p className="text-gray-600">{language === 'EN' ? 'Start planning your perfect journey' : 'Bắt đầu lập kế hoạch chuyến đi hoàn hảo'}</p>
+            
+            {/* Content on Image */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-10 text-white z-10">
+              {/* App Logo */}
+              <div className="mb-8 text-center">
+                <div className="w-24 h-24 mx-auto mb-4 bg-white/20 backdrop-blur-lg rounded-full flex items-center justify-center border-4 border-white/50 shadow-xl">
+                  <Flower2 className="w-12 h-12 text-white animate-pulse" style={{ animationDuration: '3s' }} />
+                </div>
+                <h1 className="text-4xl font-bold mb-3 drop-shadow-lg">
+                  {t[lang].appName}
+                </h1>
+                <p className="text-xl text-white/95 drop-shadow-md italic">
+                  {t[lang].tagline}
+                </p>
+              </div>
+              
+              {/* Decorative Lotus Icon */}
+              <div className="mb-6 relative">
+                <div className="w-20 h-20 bg-white/15 backdrop-blur-sm rounded-full flex items-center justify-center border-2 border-white/40">
+                  <Compass className="w-10 h-10 text-white" />
+                </div>
+                <div className="absolute -top-2 -right-2 w-7 h-7 rounded-full animate-bounce" 
+                     style={{ 
+                       background: '#FFD700',
+                       animationDuration: '2s' 
+                     }} 
+                />
+              </div>
+              
+              <h2 className="text-3xl font-bold mb-3 drop-shadow-lg">
+                {isLogin ? t[lang].welcomeTitle : t[lang].registerTitle}
+              </h2>
+              <p className="text-lg text-white/90 mb-8 text-center drop-shadow-md">
+                {isLogin ? t[lang].welcomeSubtitle : t[lang].registerSubtitle}
+              </p>
+              
+              <p className="text-white/85 mb-6 text-center">
+                {isLogin ? t[lang].dontHaveAccount : t[lang].alreadyHaveAccount}
+              </p>
+              
+              <button
+                onClick={toggleMode}
+                className="px-10 py-3.5 border-3 border-white text-white rounded-full font-semibold hover:bg-white transition-all duration-300 shadow-lg hover:shadow-xl text-lg"
+                style={{
+                  borderWidth: '2px'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = '#2B7BA8';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = 'white';
+                }}
+              >
+                {isLogin ? t[lang].register : t[lang].login}
+              </button>
+            </div>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleRegister} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm text-gray-700">{t[lang].fullName}</label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <Input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={language === 'EN' ? 'Enter your full name' : 'Nhập họ và tên'}
-                  className="pl-10 h-12"
-                  required
-                />
+          {/* Login Form */}
+          <div
+            className={`absolute inset-0 w-1/2 transition-all duration-700 ease-in-out ${
+              isLogin ? 'opacity-100 translate-x-full' : 'opacity-0 pointer-events-none translate-x-0'
+            }`}
+          >
+            <div className="h-full flex flex-col items-center justify-center p-10 md:p-14">
+              {/* Form Header */}
+              <div className="mb-8 text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center"
+                     style={{
+                       background: 'linear-gradient(135deg, #2B7BA8 0%, #5B9BD5 100%)'
+                     }}>
+                  <Flower2 className="w-9 h-9 text-white" />
+                </div>
+                <h2 className="text-3xl font-bold mb-2" style={{ color: '#2B7BA8' }}>
+                  {t[lang].login}
+                </h2>
+                <p className="text-gray-600">{t[lang].welcomeSubtitle}</p>
               </div>
-            </div>
+              
+              <form onSubmit={handleLogin} className="w-full max-w-sm space-y-6">
+                {/* Username Input */}
+                <div className="relative">
+                  <label className="block text-sm font-medium mb-2" style={{ color: '#FF8C69' }}>
+                    {t[lang].username}
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="w-full h-12 pr-12 rounded-xl border-2 focus:ring-2 transition-all"
+                      style={{
+                        borderColor: '#FFD9CC',
+                        focusBorderColor: '#FFB347'
+                      }}
+                      required
+                    />
+                    <User className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: '#FF8C69' }} />
+                  </div>
+                </div>
 
-            <div className="space-y-2">
-              <label className="text-sm text-gray-700">{t[lang].email}</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={language === 'EN' ? 'Enter your email' : 'Nhập email của bạn'}
-                  className="pl-10 h-12"
-                  required
-                />
+                {/* Password Input */}
+                <div className="relative">
+                  <label className="block text-sm font-medium mb-2" style={{ color: '#FF8C69' }}>
+                    {t[lang].password}
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full h-12 pr-12 rounded-xl border-2 focus:ring-2 transition-all"
+                      style={{
+                        borderColor: '#FFD9CC',
+                      }}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors"
+                      style={{ color: '#FF8C69' }}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-5 h-5" />
+                      ) : (
+                        <Eye className="w-5 h-5" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Login Button */}
+                <button
+                  type="submit"
+                  onMouseEnter={() => setIsLoginBtnHovered(true)}
+                  onMouseLeave={() => {
+                    setIsLoginBtnHovered(false);
+                    setIsLoginBtnPressed(false);
+                  }}
+                  onMouseDown={() => setIsLoginBtnPressed(true)}
+                  onMouseUp={() => setIsLoginBtnPressed(false)}
+                  className="w-full text-white rounded-xl font-semibold text-lg mt-6"
+                  style={{
+                    background: 'linear-gradient(135deg, #2B7BA8 0%, #5B9BD5 100%)',
+                    padding: '14px',
+                    boxShadow: isLoginBtnPressed 
+                      ? '0 4px 12px rgba(43, 123, 168, 0.4)' 
+                      : (isLoginBtnHovered ? '0 8px 24px rgba(43, 123, 168, 0.3)' : '0 4px 12px rgba(43, 123, 168, 0.2)'),
+                    transform: isLoginBtnPressed ? 'scale(0.97)' : (isLoginBtnHovered ? 'scale(1.02)' : 'scale(1.00)'),
+                    transition: isLoginBtnPressed ? 'all 120ms ease-out' : 'all 150ms cubic-bezier(0.16,1,0.3,1)',
+                  }}
+                >
+                  {t[lang].login}
+                </button>
+              </form>
+            </div>
+          </div>
+
+          {/* Register Form */}
+          <div
+            className={`absolute inset-0 w-1/2 transition-all duration-700 ease-in-out ${
+              !isLogin ? 'opacity-100 translate-x-0' : 'opacity-0 pointer-events-none translate-x-full'
+            }`}
+          >
+            <div className="h-full flex flex-col items-center justify-center p-10 md:p-14">
+              {/* Form Header */}
+              <div className="mb-8 text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center"
+                     style={{
+                       background: 'linear-gradient(135deg, #FF8C69 0%, #FFB347 100%)'
+                     }}>
+                  <Compass className="w-9 h-9 text-white" />
+                </div>
+                <h2 className="text-3xl font-bold mb-2" style={{ color: '#2B7BA8' }}>
+                  {t[lang].registration}
+                </h2>
+                <p className="text-gray-600">{t[lang].registerSubtitle}</p>
               </div>
+              
+              <form onSubmit={handleRegister} className="w-full max-w-sm space-y-5">
+                {/* Username Input */}
+                <div className="relative">
+                  <label className="block text-sm font-medium mb-2" style={{ color: '#FF8C69' }}>
+                    {t[lang].username}
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="w-full h-12 pr-12 rounded-xl border-2 focus:ring-2 transition-all"
+                      style={{
+                        borderColor: '#FFD9CC',
+                      }}
+                      required
+                    />
+                    <User className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: '#FF8C69' }} />
+                  </div>
+                </div>
+
+                {/* Email Input */}
+                <div className="relative">
+                  <label className="block text-sm font-medium mb-2" style={{ color: '#FF8C69' }}>
+                    {t[lang].email}
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full h-12 pr-12 rounded-xl border-2 focus:ring-2 transition-all"
+                      style={{
+                        borderColor: '#FFD9CC',
+                      }}
+                      required
+                    />
+                    <Mail className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: '#FF8C69' }} />
+                  </div>
+                </div>
+
+                {/* Password Input */}
+                <div className="relative">
+                  <label className="block text-sm font-medium mb-2" style={{ color: '#FF8C69' }}>
+                    {t[lang].password}
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full h-12 pr-12 rounded-xl border-2 focus:ring-2 transition-all"
+                      style={{
+                        borderColor: '#FFD9CC',
+                      }}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors"
+                      style={{ color: '#FF8C69' }}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-5 h-5" />
+                      ) : (
+                        <Eye className="w-5 h-5" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Register Button */}
+                <button
+                  type="submit"
+                  onMouseEnter={() => setIsRegisterBtnHovered(true)}
+                  onMouseLeave={() => {
+                    setIsRegisterBtnHovered(false);
+                    setIsRegisterBtnPressed(false);
+                  }}
+                  onMouseDown={() => setIsRegisterBtnPressed(true)}
+                  onMouseUp={() => setIsRegisterBtnPressed(false)}
+                  className="w-full text-white rounded-xl font-semibold text-lg mt-6"
+                  style={{
+                    background: 'linear-gradient(135deg, #FF8C69 0%, #FFB347 100%)',
+                    padding: '14px',
+                    boxShadow: isRegisterBtnPressed 
+                      ? '0 4px 12px rgba(255, 140, 105, 0.4)' 
+                      : (isRegisterBtnHovered ? '0 8px 24px rgba(255, 140, 105, 0.3)' : '0 4px 12px rgba(255, 140, 105, 0.2)'),
+                    transform: isRegisterBtnPressed ? 'scale(0.97)' : (isRegisterBtnHovered ? 'scale(1.02)' : 'scale(1.00)'),
+                    transition: isRegisterBtnPressed ? 'all 120ms ease-out' : 'all 150ms cubic-bezier(0.16,1,0.3,1)',
+                  }}
+                >
+                  {t[lang].startExploring}
+                </button>
+              </form>
             </div>
-
-            <div className="space-y-2">
-              <label className="text-sm text-gray-700">{t[lang].password}</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={language === 'EN' ? 'Create a password' : 'Tạo mật khẩu'}
-                  className="pl-10 h-12"
-                  required
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              style={{ 
-                backgroundColor: secondary,
-                color: 'white',
-                transition: 'all 0.3s'
-              }}
-              className="w-full h-12 text-base mt-6 rounded-md inline-flex items-center justify-center gap-2 font-medium shadow-sm hover:scale-[1.02] hover:shadow-lg"
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = accent}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = secondary}
-            >
-              {t[lang].registerButton}
-              <ArrowRight className="w-5 h-5" />
-            </button>
-          </form>
-
-          {/* Footer */}
-          <div className="mt-6 text-center space-y-3">
-            <p className="text-sm text-gray-600">
-              {t[lang].haveAccount}{' '}
-              <button
-                onClick={() => setMode('login')}
-                style={{ color: secondary }}
-                className="hover:underline font-medium"
-              >
-                {t[lang].login}
-              </button>
-            </p>
-            <button
-              onClick={() => setMode('intro')}
-              className="text-sm text-gray-500 hover:text-gray-700"
-            >
-              ← {t[lang].backToHome}
-            </button>
           </div>
         </div>
       </div>
