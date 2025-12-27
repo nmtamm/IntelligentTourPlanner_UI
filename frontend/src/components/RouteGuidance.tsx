@@ -1,48 +1,91 @@
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { ArrowLeft, Navigation, MapPin, Clock, Route } from 'lucide-react';
-import { Destination } from '../types';
-import { t } from '../locales/translations';
+import { DayPlan, Destination } from '../types';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
+import polyline from '@mapbox/polyline';
+import React, { useEffect } from 'react';
+import { t, getDirectionVi, osrmModifierVi } from '../locales/translations';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { RouteInstruction } from '../types';
 
 interface RouteGuidanceProps {
-  from: Destination;
-  to: Destination;
+  day: DayPlan;
+  segmentIndex: number;
   onBack: () => void;
   language: 'EN' | 'VI';
 }
 
-export function RouteGuidance({ from, to, onBack, language }: RouteGuidanceProps) {
+function FitBounds({ bounds }) {
+  const map = useMap();
+  React.useEffect(() => {
+    if (bounds) {
+      map.fitBounds(bounds, { padding: [50, 50] });
+    }
+  }, [bounds, map]);
+  return null;
+}
+
+function capitalizeFirst(str: string): string {
+  return str ? str.charAt(0).toUpperCase() + str.slice(1) : "";
+}
+
+export function RouteGuidance({ day, segmentIndex, onBack, language }: RouteGuidanceProps) {
+  // Language handling
   const lang = language.toLowerCase() as 'en' | 'vi';
+
+  // Theme colors
   const { primary, secondary, accent } = useThemeColors();
 
-  // Calculate simple distance (Haversine formula)
-  const calculateDistance = () => {
-    const R = 6371; // Earth's radius in km
-    const dLat = toRad(to.lat - from.lat);
-    const dLng = toRad(to.lng - from.lng);
-    
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(toRad(from.lat)) * Math.cos(toRad(to.lat)) *
-      Math.sin(dLng / 2) * Math.sin(dLng / 2);
-    
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  };
+  // Extract from/to destinations
+  const from = day.optimizedRoute[segmentIndex];
+  const to = day.optimizedRoute[segmentIndex + 1];
 
-  const toRad = (deg: number) => deg * (Math.PI / 180);
+  // Extract instructions
+  const instructions: RouteInstruction[] = day.routeInstructions?.[segmentIndex] ?? [];
+  const [translatedDirections, setTranslatedDirections] = React.useState<string[]>([]);
 
-  const distance = calculateDistance();
-  const estimatedTime = Math.ceil((distance / 5) * 60); // Assuming 5 km/h walking speed
+  // Extract polyline geometry
+  const geometry = day.routeSegmentGeometries?.[segmentIndex];
+  const polylinePositions = geometry ? polyline.decode(geometry).filter(
+    ([lat, lng]) => !isNaN(lat) && !isNaN(lng)
+  ) : [];
 
-  // Generate simple turn-by-turn directions
-  const directions = [
-    'Head towards the destination',
-    'Continue straight for 500m',
-    'Turn right at the intersection',
-    'Continue for 1.2 km',
-    'Destination will be on your left'
+
+  // Distance and time from OSRM
+  const distance = day.routeDistanceKm ?? 0;
+  const estimatedTime = day.routeDurationMin ?? 0;
+
+  const fromLat = from?.latitude ?? 0;
+  const fromLng = from?.longitude ?? 0;
+  const toLat = to?.latitude ?? 0;
+  const toLng = to?.longitude ?? 0;
+
+  const markerCoords = [
+    [fromLat, fromLng],
+    [toLat, toLng]
   ];
+  const allCoords = [
+    ...markerCoords,
+    ...polylinePositions
+  ].filter(([lat, lng]) => !isNaN(lat) && !isNaN(lng));
+
+  const bounds = allCoords.length
+    ? [
+      [Math.min(...allCoords.map(([lat]) => lat)), Math.min(...allCoords.map(([_, lng]) => lng))],
+      [Math.max(...allCoords.map(([lat]) => lat)), Math.max(...allCoords.map(([_, lng]) => lng))]
+    ]
+    : undefined;
+
+  useEffect(() => {
+    if (language === "VI" && instructions.length > 0) {
+      // No need to call backend for translation, use local dictionary
+      const results = instructions.map(instr => getDirectionVi(instr.type, instr.modifier));
+      setTranslatedDirections(results);
+    } else {
+      setTranslatedDirections([]);
+    }
+  }, [instructions, language]);
 
   return (
     <div className="space-y-6" data-tutorial="route-guidance">
@@ -73,7 +116,7 @@ export function RouteGuidance({ from, to, onBack, language }: RouteGuidanceProps
           }}
         >
           {/* Ripple effect on click */}
-          <span 
+          <span
             className="absolute inset-0 opacity-0 group-active:opacity-100 pointer-events-none"
             style={{
               background: `radial-gradient(circle, ${primary}30 0%, transparent 70%)`,
@@ -91,8 +134,8 @@ export function RouteGuidance({ from, to, onBack, language }: RouteGuidanceProps
           />
 
           {/* Arrow Icon with bounce animation */}
-          <ArrowLeft 
-            className="w-4 h-4 transition-all duration-300 group-hover:-translate-x-2 group-hover:scale-125" 
+          <ArrowLeft
+            className="w-4 h-4 transition-all duration-300 group-hover:-translate-x-2 group-hover:scale-125"
             style={{
               color: primary,
               filter: `drop-shadow(0 0 6px ${primary}40)`,
@@ -100,7 +143,7 @@ export function RouteGuidance({ from, to, onBack, language }: RouteGuidanceProps
           />
 
           {/* Text with smooth transition */}
-          <span 
+          <span
             className="relative z-10 transition-all duration-200 group-hover:tracking-wide"
             style={{
               color: '#374151',
@@ -129,7 +172,6 @@ export function RouteGuidance({ from, to, onBack, language }: RouteGuidanceProps
                   </div>
                   <div>
                     <p className="text-gray-900">{from.name}</p>
-                    <p className="text-sm text-gray-700">{from.address}</p>
                   </div>
                 </div>
               </div>
@@ -145,13 +187,12 @@ export function RouteGuidance({ from, to, onBack, language }: RouteGuidanceProps
                   </div>
                   <div>
                     <p className="text-red-900">{to.name}</p>
-                    <p className="text-sm text-red-700">{to.address}</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Stats */}
+            {/* Status */}
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-[#DAF9D8] rounded-lg p-4">
                 <div className="flex items-center gap-2 text-[#004DB6] mb-1">
@@ -165,7 +206,7 @@ export function RouteGuidance({ from, to, onBack, language }: RouteGuidanceProps
                   <Clock className="w-4 h-4" />
                   <span className="text-sm">{t('estimatedTime', lang)}</span>
                 </div>
-                <p className="text-[#004DB6]">{estimatedTime} min</p>
+                <p className="text-[#004DB6]">{Math.ceil(estimatedTime)} min</p>
               </div>
             </div>
 
@@ -173,17 +214,34 @@ export function RouteGuidance({ from, to, onBack, language }: RouteGuidanceProps
             <div className="space-y-3 max-h-[400px] overflow-y-auto">
               <h3 className="text-gray-900">{t('turnByTurnDirections', lang)}</h3>
               <div className="space-y-2">
-                {directions.map((direction, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-start gap-3 bg-gray-50 rounded-lg p-3"
-                  >
-                    <div className="bg-[#004DB6] rounded-full w-6 h-6 flex items-center justify-center text-white text-xs shrink-0">
-                      {idx + 1}
-                    </div>
-                    <p className="text-gray-700 text-sm">{direction}</p>
+                {instructions.length > 0 ? (
+                  <div className="mb-4">
+
+                    {instructions.map((instr, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-start gap-3 bg-gray-50 rounded-lg p-3"
+                      >
+                        <div className="bg-[#004DB6] rounded-full w-6 h-6 flex items-center justify-center text-white text-xs shrink-0">
+                          {idx + 1}
+                        </div>
+                        <p className="text-gray-700 text-sm">
+                          {language === 'EN'
+                            ? instr.type === "new name"
+                              ? `${capitalizeFirst(instr.modifier)}`
+                              : `${capitalizeFirst(instr.type)} ${instr.modifier}`.replace(/\s+$/, '')
+                            : instr.type === "new name"
+                              ? capitalizeFirst(osrmModifierVi[instr.modifier] || instr.modifier)
+                              : translatedDirections[idx]
+                          } {language === 'EN' ? "onto" : "vào"}
+                          {instr.name && <span className="font-semibold"> {instr.name}</span>}
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                ) : (
+                  <div className="text-gray-500">{t('noInstructions', lang)}</div>
+                )}
               </div>
             </div>
           </div>
@@ -193,91 +251,41 @@ export function RouteGuidance({ from, to, onBack, language }: RouteGuidanceProps
         <Card className="p-6">
           <div className="space-y-4">
             <h3 className="text-gray-900">{t('gpsNavigation', lang)}</h3>
-            
+
             <div className="bg-gray-50 rounded-lg overflow-hidden border h-[600px] relative">
-              <svg viewBox="0 0 400 600" className="w-full h-full">
-                {/* Background */}
-                <rect width="400" height="600" fill="#e0f2fe" />
-                
-                {/* Grid - streets */}
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <g key={i}>
-                    <line
-                      x1={i * 50}
-                      y1={0}
-                      x2={i * 50}
-                      y2={600}
-                      stroke="#cbd5e1"
-                      strokeWidth="8"
-                    />
-                    <line
-                      x1={0}
-                      y1={i * 75}
-                      x2={400}
-                      y2={i * 75}
-                      stroke="#cbd5e1"
-                      strokeWidth="8"
-                    />
-                  </g>
-                ))}
-
-                {/* Route path */}
-                <path
-                  d="M 100 500 L 100 400 L 200 400 L 200 200 L 300 200 L 300 100"
-                  stroke="#6366f1"
-                  strokeWidth="6"
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+              <MapContainer
+                center={[fromLat, fromLng]}
+                zoom={13}
+                style={{ height: "100%", width: "100%" }}
+              >
+                <FitBounds bounds={bounds} />
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 />
-
-                {/* Starting point */}
-                <g>
-                  <circle cx="100" cy="500" r="15" fill="#10b981" />
-                  <text
-                    x="100"
-                    y="505"
-                    textAnchor="middle"
-                    fill="white"
-                    fontSize="14"
-                  >
-                    A
-                  </text>
-                </g>
-
-                {/* Ending point */}
-                <g>
-                  <circle cx="300" cy="100" r="15" fill="#ef4444" />
-                  <text
-                    x="300"
-                    y="105"
-                    textAnchor="middle"
-                    fill="white"
-                    fontSize="14"
-                  >
-                    B
-                  </text>
-                </g>
-
-                {/* Current position indicator */}
-                <g>
-                  <circle cx="150" cy="400" r="10" fill="#3b82f6" />
-                  <circle cx="150" cy="400" r="20" fill="#3b82f6" opacity="0.3" />
-                </g>
-              </svg>
-
-              {/* GPS Info Overlay */}
-              <div className="absolute top-4 left-4 right-4 bg-white rounded-lg shadow-lg p-3">
-                <div className="flex items-center gap-2 text-sm">
-                  <MapPin className="w-4 h-4 text-blue-600" />
-                  <span className="text-gray-600">{t('followingRoute', lang)}</span>
-                </div>
-              </div>
+                {/* From marker */}
+                {from && (
+                  <Marker position={[from.latitude, from.longitude]}>
+                    <Popup>{from.name}</Popup>
+                  </Marker>
+                )}
+                {/* To marker */}
+                {to && (
+                  <Marker position={[to.latitude, to.longitude]}>
+                    <Popup>{to.name}</Popup>
+                  </Marker>
+                )}
+                {/* Polyline for the selected segment only */}
+                {geometry && polylinePositions.length >= 2 && (
+                  <Polyline
+                    positions={polylinePositions}
+                    color="#800080"
+                    weight={3}
+                    opacity={1}
+                  />
+                )}
+              </MapContainer>
             </div>
-
-            <p className="text-sm text-gray-500 text-center">
-              {t('gpsSimulation', lang)}
-            </p>
           </div>
         </Card>
       </div>

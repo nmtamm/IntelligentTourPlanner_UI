@@ -914,7 +914,7 @@ Bạn có thể đề cập một số chi tiết dưới đây để giúp chú
     en: "Click this button to center and zoom the map to show all your destinations at once.",
     vi: "Nhấp vào nút này để căn giữa và phóng to bản đồ để hiển thị tất cả điểm đến cùng lúc."
   },
-  
+
   // Map View & Route Guidance Combined Steps
   tutorial_map_view_card_title: {
     en: "Map View Card",
@@ -1495,10 +1495,6 @@ Bạn có thể đề cập một số chi tiết dưới đây để giúp chú
     en: "No destinations yet. Add a destination or click on the map!",
     vi: "Chưa có điểm đến nào. Thêm điểm đến hoặc nhấp vào bản đồ!",
   },
-  destinationName: {
-    en: "Destination name",
-    vi: "Tên điểm đến",
-  },
   detailPlaceholder: {
     en: "Detail (e.g., entrance fee)",
     vi: "Chi tiết (ví dụ: phí vào cửa)",
@@ -1563,6 +1559,10 @@ Bạn có thể đề cập một số chi tiết dưới đây để giúp chú
     en: "Dates",
     vi: "Ngày tháng",
   },
+  noInstructions: {
+    en: "No instructions available.",
+    vi: "Không có hướng dẫn nào."
+  },
 } as const;
 
 export type TranslationKey = keyof typeof TRANSLATIONS;
@@ -1570,4 +1570,42 @@ export type Language = "en" | "vi";
 
 export function t(key: TranslationKey, lang: Language): string {
   return TRANSLATIONS[key][lang];
+}
+
+export const osrmTypeVi: Record<string, string> = {
+  turn: "Rẽ",
+  depart: "Rẽ",
+  arrive: "Rẽ",
+  merge: "Nhập vào làn đường",
+  "on ramp": "Vào đường nhánh",
+  "off ramp": "Ra khỏi đường nhánh",
+  fork: "Đi thẳng",
+  "end of road": "Cuối đường",
+  roundabout: "Vào vòng xoay",
+  "exit roundabout": "Ra khỏi vòng xoay",
+  continue: "Rồi",
+  rotary: "Vào vòng xoay",
+  "exit rotary": "Ra khỏi vòng xoay",
+  "roundabout turn": "Vào vòng xoay",
+  // ...add more as needed
+};
+
+export const osrmModifierVi: Record<string, string> = {
+  left: "theo hướng bên trái",
+  right: "theo hướng bên phải",
+  straight: "đi thẳng",
+  sharp: "gắt",
+  uturn: "quay đầu",
+  "slight right": "theo hướng phải",
+  "slight left": "theo hướng trái",
+  "sharp right": "theo hướng phải",
+  "sharp left": "theo hướng trái",
+  // ...add more as needed
+};
+
+export function getDirectionVi(type: string, modifier: string): string {
+  const typeVi = osrmTypeVi[type] || type;
+  const modifierVi = osrmModifierVi[modifier] || modifier;
+  if (modifierVi) return `${typeVi} ${modifierVi}`;
+  return typeVi;
 }
