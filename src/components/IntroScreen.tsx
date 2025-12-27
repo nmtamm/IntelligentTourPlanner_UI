@@ -3,7 +3,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Mail, Lock, User, Globe, MapPin, Compass, Flower2, Waves, Sun, Palmtree, Eye, EyeOff } from "lucide-react";
 import { useThemeColors } from "../hooks/useThemeColors";
-import heroImage from "figma:asset/2c7967513e41453aacd651ecfb544f81dd56d846.png";
+import { ImageWithFallback } from "./figma/ImageWithFallback";
 
 interface IntroScreenProps {
   onContinue: (userEmail?: string, username?: string, password?: string) => void;
@@ -173,8 +173,8 @@ export function IntroScreen({ onContinue, language, onLanguageChange }: IntroScr
           >
             {/* Background Image with Overlay */}
             <div className="absolute inset-0">
-              <img 
-                src={heroImage} 
+              <ImageWithFallback 
+                src="/images/vietnam-hero.jpg" 
                 alt="Vietnam Tourism"
                 className="w-full h-full object-cover"
               />

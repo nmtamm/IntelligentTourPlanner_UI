@@ -13,6 +13,7 @@ import { Eye, EyeOff, User, Mail, Lock } from "lucide-react";
 import { toast } from "sonner@2.0.3";
 import { t } from "../locales/translations";
 import { ErrorNotification } from "./ErrorNotification";
+import { useThemeColors } from "../hooks/useThemeColors";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -32,6 +33,7 @@ export function AuthModal({
   language,
 }: AuthModalProps) {
   const lang = language.toLowerCase() as "en" | "vi";
+  const { primary, secondary, accent, light } = useThemeColors();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -76,6 +78,14 @@ export function AuthModal({
     setIsRegistering(false);
   };
 
+  // Helper function to convert hex to rgba
+  const hexToRgba = (hex: string, alpha: number) => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  };
+
   return (
     <Dialog
       open={isOpen}
@@ -103,7 +113,7 @@ export function AuthModal({
           <div className="space-y-2">
             <Label
               htmlFor="username"
-              style={{ color: "#FF8C69" }}
+              style={{ color: accent }}
             >
               {t("username", lang)}
             </Label>
@@ -114,12 +124,12 @@ export function AuthModal({
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="pr-12"
-                style={{ borderColor: "#FFD9CC" }}
+                style={{ borderColor: light }}
                 required
               />
               <User
                 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5"
-                style={{ color: "#FF8C69" }}
+                style={{ color: accent }}
               />
             </div>
           </div>
@@ -129,7 +139,7 @@ export function AuthModal({
             <div className="space-y-2">
               <Label
                 htmlFor="email"
-                style={{ color: "#FF8C69" }}
+                style={{ color: accent }}
               >
                 {t("email", lang)}
               </Label>
@@ -140,12 +150,12 @@ export function AuthModal({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pr-12"
-                  style={{ borderColor: "#FFD9CC" }}
+                  style={{ borderColor: light }}
                   required
                 />
                 <Mail
                   className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5"
-                  style={{ color: "#FF8C69" }}
+                  style={{ color: accent }}
                 />
               </div>
             </div>
@@ -155,7 +165,7 @@ export function AuthModal({
           <div className="space-y-2">
             <Label
               htmlFor="password"
-              style={{ color: "#FF8C69" }}
+              style={{ color: accent }}
             >
               {t("password", lang)}
             </Label>
@@ -167,14 +177,14 @@ export function AuthModal({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="pr-12"
-                style={{ borderColor: "#FFD9CC" }}
+                style={{ borderColor: light }}
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors"
-                style={{ color: "#FF8C69" }}
+                style={{ color: accent }}
                 aria-label={
                   showPassword
                     ? "Hide password"
@@ -211,17 +221,17 @@ export function AuthModal({
               className="flex-1 text-white font-semibold rounded-md h-9"
               style={{
                 background: isRegistering
-                  ? "linear-gradient(135deg, #FF8C69 0%, #FFB347 100%)"
-                  : "linear-gradient(135deg, #2B7BA8 0%, #5B9BD5 100%)",
+                  ? `linear-gradient(135deg, ${secondary} 0%, ${accent} 100%)`
+                  : `linear-gradient(135deg, ${primary} 0%, ${secondary} 100%)`,
                 padding: "0 16px",
                 boxShadow: isSubmitBtnPressed
                   ? isRegistering
-                    ? "0 2px 6px rgba(255, 140, 105, 0.4)"
-                    : "0 2px 6px rgba(43, 123, 168, 0.4)"
+                    ? `0 2px 6px ${hexToRgba(secondary, 0.4)}`
+                    : `0 2px 6px ${hexToRgba(primary, 0.4)}`
                   : isSubmitBtnHovered
                     ? isRegistering
-                      ? "0 4px 12px rgba(255, 140, 105, 0.3)"
-                      : "0 4px 12px rgba(43, 123, 168, 0.3)"
+                      ? `0 4px 12px ${hexToRgba(secondary, 0.3)}`
+                      : `0 4px 12px ${hexToRgba(primary, 0.3)}`
                     : "none",
                 transform: isSubmitBtnPressed
                   ? "scale(0.97)"
@@ -243,7 +253,8 @@ export function AuthModal({
             <button
               type="button"
               onClick={() => setIsRegistering(!isRegistering)}
-              className="text-sm text-[#004DB6] hover:underline"
+              className="text-sm hover:underline transition-colors"
+              style={{ color: primary }}
             >
               {isRegistering
                 ? t("alreadyHaveAccount", lang)

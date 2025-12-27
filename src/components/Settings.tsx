@@ -45,7 +45,7 @@ export function Settings({
   } : setInternalIsOpen;
 
   // Get available theme options (exclude 'custom' for now - will be added in future)
-  const availableThemes: ThemeType[] = ['default', 'ocean', 'forest', 'sunset', 'lavender'];
+  const availableThemes: ThemeType[] = ['vietnamLotus', 'classicBlue', 'ocean', 'forest', 'sunset', 'lavender'];
 
   // Modal version (from sidebar)
   if (asModal) {
@@ -250,18 +250,26 @@ export function Settings({
                             `}
                           >
                             {/* Color Preview Circles */}
-                            <div className="flex gap-1.5 mb-2">
+                            <div className="flex gap-1 mb-2 flex-wrap">
                               <div 
-                                className="w-6 h-6 rounded-full border border-gray-200"
+                                className="w-5 h-5 rounded-full border border-gray-200"
                                 style={{ backgroundColor: themeConfig.colors.primary }}
                               />
                               <div 
-                                className="w-6 h-6 rounded-full border border-gray-200"
+                                className="w-5 h-5 rounded-full border border-gray-200"
                                 style={{ backgroundColor: themeConfig.colors.secondary }}
                               />
                               <div 
-                                className="w-6 h-6 rounded-full border border-gray-200"
+                                className="w-5 h-5 rounded-full border border-gray-200"
                                 style={{ backgroundColor: themeConfig.colors.accent }}
+                              />
+                              <div 
+                                className="w-5 h-5 rounded-full border border-gray-200"
+                                style={{ backgroundColor: themeConfig.colors.light }}
+                              />
+                              <div 
+                                className="w-5 h-5 rounded-full border border-gray-200"
+                                style={{ backgroundColor: themeConfig.colors.highlight }}
                               />
                             </div>
                             

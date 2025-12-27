@@ -2,10 +2,11 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 
 // Theme color definitions
 export interface ThemeColors {
-  primary: string;        // Main blue #004DB6
-  secondary: string;      // Green #70C573
-  accent: string;         // Sage green #5E885D
-  light: string;          // Mint light #DAF9D8
+  primary: string;        // Main color 1
+  secondary: string;      // Main color 2
+  accent: string;         // Main color 3
+  light: string;          // Main color 4
+  highlight: string;      // Main color 5 - NEW
   background: string;     // App background gradient
   cardBg: string;         // Card background
   text: {
@@ -18,7 +19,7 @@ export interface ThemeColors {
 }
 
 // Predefined theme types
-export type ThemeType = 'default' | 'ocean' | 'forest' | 'sunset' | 'lavender' | 'custom';
+export type ThemeType = 'vietnamLotus' | 'classicBlue' | 'ocean' | 'forest' | 'sunset' | 'lavender';
 
 // Theme configuration
 export interface Theme {
@@ -40,19 +41,45 @@ interface ThemeContextType {
   applyTheme: () => void;
 }
 
-// Default theme (current app colors)
-const defaultTheme: Theme = {
-  id: 'default',
+// Vietnam Lotus theme - DEFAULT (matches IntroScreen)
+const vietnamLotusTheme: Theme = {
+  id: 'vietnamLotus',
   name: {
-    en: 'Default Blue',
-    vi: 'Xanh Dương Mặc Định',
+    en: 'Vietnam Lotus',
+    vi: 'Sen Việt Nam',
   },
   colors: {
-    primary: '#004DB6',
-    secondary: '#70C573',
-    accent: '#5E885D',
-    light: '#DAF9D8',
-    background: 'linear-gradient(to bottom right, #D1FAE5, #DBEAFE)',
+    primary: '#2B7BA8',      // Blue from IntroScreen
+    secondary: '#FFB347',    // Orange from IntroScreen
+    accent: '#FF8C69',       // Coral/salmon from IntroScreen
+    light: '#FFD9CC',        // Light peach from IntroScreen
+    highlight: '#FF6B6B',    // Coral red for contrast
+    background: 'linear-gradient(135deg, #FFE5D9 0%, #FFC9A8 25%, #FFB5C5 50%, #C5A3D6 75%, #9ECDE8 100%)',
+    cardBg: '#FFFFFF',
+    text: {
+      primary: '#64748B',    // Gray text
+      secondary: '#94A3B8',
+      heading: '#1E293B',
+    },
+    border: '#FFD9CC',
+    shadow: 'rgba(43, 123, 168, 0.08)',
+  },
+};
+
+// Classic Blue theme (original app colors)
+const classicBlueTheme: Theme = {
+  id: 'classicBlue',
+  name: {
+    en: 'Azure Sky',
+    vi: 'Bầu Trời Xanh',
+  },
+  colors: {
+    primary: '#004DB6',      // Deep blue
+    secondary: '#70C573',    // Fresh green
+    accent: '#5E885D',       // Sage green
+    light: '#DAF9D8',        // Mint light
+    highlight: '#87CEEB',    // Sky blue
+    background: 'linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 25%, #BFDBFE 50%, #93C5FD 75%, #DBEAFE 100%)',
     cardBg: '#FFFFFF',
     text: {
       primary: '#64748B',
@@ -66,28 +93,30 @@ const defaultTheme: Theme = {
 
 // Predefined themes (ready for future expansion)
 export const THEMES: Record<ThemeType, Theme> = {
-  default: defaultTheme,
+  vietnamLotus: vietnamLotusTheme,
+  classicBlue: classicBlueTheme,
   
   // Ocean theme - Blue tones
   ocean: {
     id: 'ocean',
     name: {
-      en: 'Ocean Blue',
-      vi: 'Xanh Đại Dương',
+      en: 'Tropical Paradise',
+      vi: 'Thiên Đường Nhiệt Đới',
     },
     colors: {
-      primary: '#0077BE',
-      secondary: '#00A8E8',
-      accent: '#007EA7',
-      light: '#C8E9F5',
-      background: 'linear-gradient(to bottom right, #C8E9F5, #E0F4FF)',
+      primary: '#0077BE',      // Deep ocean blue
+      secondary: '#FF6B6B',    // Coral red for contrast
+      accent: '#FFA726',       // Warm orange accent
+      light: '#B3E5FC',        // Light sky blue
+      highlight: '#4DD0E1',    // Cyan turquoise
+      background: 'linear-gradient(135deg, #E1F5FE 0%, #B3E5FC 25%, #FFE0B2 50%, #FFCC80 75%, #FFF3E0 100%)',
       cardBg: '#FFFFFF',
       text: {
-        primary: '#334155',
-        secondary: '#64748B',
-        heading: '#0F172A',
+        primary: '#37474F',    // Deep blue-gray
+        secondary: '#607D8B',
+        heading: '#1A237E',    // Deep navy
       },
-      border: '#CBD5E1',
+      border: '#B3E5FC',
       shadow: 'rgba(0, 119, 190, 0.08)',
     },
   },
@@ -96,23 +125,24 @@ export const THEMES: Record<ThemeType, Theme> = {
   forest: {
     id: 'forest',
     name: {
-      en: 'Forest Green',
-      vi: 'Xanh Rừng',
+      en: 'Mountain Safari',
+      vi: 'Safari Núi Rừng',
     },
     colors: {
-      primary: '#2D6A4F',
-      secondary: '#52B788',
-      accent: '#40916C',
-      light: '#D8F3DC',
-      background: 'linear-gradient(to bottom right, #D8F3DC, #E8F5E9)',
+      primary: '#2E7D32',      // Forest green
+      secondary: '#FF6F00',    // Burnt orange for contrast
+      accent: '#FDD835',       // Sunlight yellow
+      light: '#C8E6C9',        // Light mint
+      highlight: '#8BC34A',    // Light green
+      background: 'linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 25%, #FFF9C4 50%, #FFECB3 75%, #FFF8E1 100%)',
       cardBg: '#FFFFFF',
       text: {
-        primary: '#344E41',
-        secondary: '#588157',
-        heading: '#1B4332',
+        primary: '#3E2723',    // Dark brown
+        secondary: '#5D4037',
+        heading: '#1B5E20',    // Deep forest
       },
-      border: '#B7E4C7',
-      shadow: 'rgba(45, 106, 79, 0.08)',
+      border: '#C8E6C9',
+      shadow: 'rgba(46, 125, 50, 0.08)',
     },
   },
 
@@ -120,23 +150,24 @@ export const THEMES: Record<ThemeType, Theme> = {
   sunset: {
     id: 'sunset',
     name: {
-      en: 'Sunset Orange',
-      vi: 'Hoàng Hôn Cam',
+      en: 'Desert Sunset',
+      vi: 'Hoàng Hôn Sa Mạc',
     },
     colors: {
-      primary: '#E76F51',
-      secondary: '#F4A261',
-      accent: '#E9C46A',
-      light: '#FCE8DB',
-      background: 'linear-gradient(to bottom right, #FCE8DB, #FFF4E6)',
+      primary: '#D84315',      // Deep orange-red
+      secondary: '#7B1FA2',    // Deep purple for contrast
+      accent: '#FFC107',       // Golden yellow
+      light: '#FFCCBC',        // Soft peach
+      highlight: '#E91E63',    // Pink magenta
+      background: 'linear-gradient(135deg, #FFE0B2 0%, #FFCCBC 25%, #F8BBD0 50%, #E1BEE7 75%, #F3E5F5 100%)',
       cardBg: '#FFFFFF',
       text: {
-        primary: '#5A4A42',
-        secondary: '#8B7355',
-        heading: '#3C2F2F',
+        primary: '#4E342E',    // Dark brown
+        secondary: '#6D4C41',
+        heading: '#BF360C',    // Burnt orange
       },
-      border: '#F5DCC8',
-      shadow: 'rgba(231, 111, 81, 0.08)',
+      border: '#FFCCBC',
+      shadow: 'rgba(216, 67, 21, 0.08)',
     },
   },
 
@@ -144,23 +175,24 @@ export const THEMES: Record<ThemeType, Theme> = {
   lavender: {
     id: 'lavender',
     name: {
-      en: 'Lavender Purple',
-      vi: 'Tím Lavender',
+      en: 'Royal Palace',
+      vi: 'Cung Điện Hoàng Gia',
     },
     colors: {
-      primary: '#7B68EE',
-      secondary: '#9D84B7',
-      accent: '#B695C0',
-      light: '#E6E1F0',
-      background: 'linear-gradient(to bottom right, #E6E1F0, #F3E8FF)',
+      primary: '#7B1FA2',      // Deep purple
+      secondary: '#00ACC1',    // Turquoise for contrast
+      accent: '#FFB300',       // Amber gold
+      light: '#E1BEE7',        // Light lavender
+      highlight: '#AB47BC',    // Medium purple
+      background: 'linear-gradient(135deg, #F3E5F5 0%, #E1BEE7 25%, #B2EBF2 50%, #80DEEA 75%, #E0F7FA 100%)',
       cardBg: '#FFFFFF',
       text: {
-        primary: '#4A4458',
-        secondary: '#6B5D7B',
-        heading: '#2D2433',
+        primary: '#4A148C',    // Deep purple
+        secondary: '#6A1B9A',
+        heading: '#4A148C',    // Rich purple
       },
-      border: '#D4C5E2',
-      shadow: 'rgba(123, 104, 238, 0.08)',
+      border: '#E1BEE7',
+      shadow: 'rgba(123, 31, 162, 0.08)',
     },
   },
 
@@ -171,7 +203,7 @@ export const THEMES: Record<ThemeType, Theme> = {
       en: 'Custom Theme',
       vi: 'Chủ Đề Tùy Chỉnh',
     },
-    colors: defaultTheme.colors, // Will be overridden by user
+    colors: vietnamLotusTheme.colors, // Will be overridden by user
   },
 };
 
@@ -183,7 +215,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [themeType, setThemeType] = useState<ThemeType>(() => {
     // Load from localStorage
     const saved = localStorage.getItem('themeType');
-    return (saved as ThemeType) || 'default';
+    return (saved as ThemeType) || 'vietnamLotus';  // Default to vietnamLotus theme
   });
 
   const [customColors, setCustomColors] = useState<ThemeColors | null>(() => {
@@ -207,6 +239,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.style.setProperty('--color-secondary', colors.secondary);
     root.style.setProperty('--color-accent', colors.accent);
     root.style.setProperty('--color-light', colors.light);
+    root.style.setProperty('--color-highlight', colors.highlight);
     root.style.setProperty('--color-card-bg', colors.cardBg);
     root.style.setProperty('--color-text-primary', colors.text.primary);
     root.style.setProperty('--color-text-secondary', colors.text.secondary);
