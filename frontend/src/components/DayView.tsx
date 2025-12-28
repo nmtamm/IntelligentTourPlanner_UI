@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, React } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -18,6 +18,8 @@ import { ErrorNotification } from "./ErrorNotification";
 import { PlaceDetailsModal } from "./PlaceDetailsModal";
 import { useDrag, useDrop, DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
+import { parseAmount } from "../utils/parseAmount";
+import { getPlaceById } from "../utils/serp";
 
 interface DayViewProps {
   day: DayPlan;
@@ -39,6 +41,7 @@ interface DraggableDestinationCardProps {
   onSelect: (id: string) => void;
   scrollContainerRef: React.RefObject<HTMLDivElement>;
   onDragStateChange?: (isDragging: boolean) => void;
+  currency: "USD" | "VND";
 }
 
 const ITEM_TYPE = "DESTINATION_CARD";
@@ -54,11 +57,14 @@ function DraggableDestinationCard({
   onSelect,
   scrollContainerRef,
   onDragStateChange,
+  currency,
 }: DraggableDestinationCardProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [isPressed, setIsPressed] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
+  // Fetch detailed info if needed
+  const [detailedDestination, setDetailedDestination] = useState<Destination | null>(null);
   const [{ handlerId }, drop] = useDrop({
     accept: ITEM_TYPE,
     collect(monitor) {
@@ -134,12 +140,30 @@ function DraggableDestinationCard({
     }),
   });
 
+  let minTotal = 0, maxTotal = 0, isApprox = false;
+  destination.costs.forEach((cost: any) => {
+    const parsed = parseAmount(cost.amount);
+    minTotal += parsed.min;
+    maxTotal += parsed.max;
+    if (parsed.isApprox) isApprox = true;
+  });
+
+  const currencySymbol = currency === 'USD' ? 'USD' : 'VND';
+
   // Notify parent when drag state changes
   useEffect(() => {
     if (onDragStateChange) {
       onDragStateChange(isDragging);
     }
   }, [isDragging, onDragStateChange]);
+
+  useEffect(() => {
+    let isMounted = true;
+    getPlaceById(destination.id).then((result) => {
+      if (isMounted) setDetailedDestination(result);
+    });
+    return () => { isMounted = false; };
+  }, [destination.id]);
 
   // Attach drag to the grip handle, drop to the whole card
   drag(drop(ref));
@@ -307,20 +331,28 @@ function DraggableDestinationCard({
 
           {/* Category Tag - Moved right below name */}
           <div className="mb-2 ml-7">
-            <span className="inline-block bg-[#E8FBEA] text-[#16A34A] text-[13px] font-medium px-[10px] py-1 rounded-full">
-              {destination.placeType || "Tourist Attraction"}
-            </span>
+            {detailedDestination?.type && (
+              <span className="inline-block bg-[#E8FBEA] text-[#16A34A] text-[13px] font-medium px-[10px] py-1 rounded-full">
+                {detailedDestination.type}
+              </span>
+            )}
           </div>
 
           {/* Rating Section - Enhanced Star Animation */}
           <div className="flex items-center gap-2 mb-2 ml-7">
             <span className="text-[16px] font-semibold text-[#111827]">
-              {destination.rating?.toFixed(1) || "4.5"}
+              {detailedDestination?.rating !== undefined && detailedDestination?.rating !== null
+                ? detailedDestination.rating.toFixed(1)
+                : "4.5"}
             </span>
             <div className="flex items-center gap-0.5">
               {[1, 2, 3, 4, 5].map((star) => {
-                const rating = destination.rating || 4.5;
-                const isFilled = star <= Math.floor(rating) || (star === Math.ceil(rating) && rating % 1 !== 0);
+                const rating = detailedDestination?.rating !== undefined && detailedDestination?.rating !== null
+                  ? detailedDestination.rating
+                  : 4.5;
+                const isFilled =
+                  star <= Math.floor(rating) ||
+                  (star === Math.ceil(rating) && rating % 1 !== 0);
                 return (
                   <Star
                     key={star}
@@ -335,16 +367,18 @@ function DraggableDestinationCard({
               })}
             </div>
             <span className="text-[13px] text-[#6B7280]">
-              ({destination.reviewCount?.toLocaleString() || "1,234"})
+              ({detailedDestination?.reviews !== undefined && detailedDestination?.reviews !== null
+                ? detailedDestination.reviews.toLocaleString()
+                : "1,234"})
             </span>
           </div>
 
           {/* Price Level */}
           <div className="flex items-center gap-1.5 ml-7">
-            <DollarSign className="w-4 h-4 shrink-0 text-[#6B7280]" />
-            <span className="text-[14px] text-[#374151]">
-              {"💰".repeat(destination.priceLevel || 3)}
-            </span>
+            {isApprox
+              ? `${minTotal.toLocaleString()} \u2013 ${maxTotal.toLocaleString()}`
+              : minTotal.toLocaleString()
+            } {currencySymbol}
           </div>
         </div>
       </div>
@@ -436,74 +470,6 @@ function DayViewContent({
     };
   }, [isAnyCardDragging]);
 
-  const addDestination = async () => {
-    const newDestinationName = prompt(
-      t("enterDestinationName", lang),
-    );
-    if (!newDestinationName?.trim()) {
-      setError(t("pleaseEnterDestinationName", lang));
-      return;
-    }
-
-    setIsAdding(true);
-
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // Mock place types for variety
-    const placeTypes = [
-      "Restaurant",
-      "Museum",
-      "Hotel",
-      "Café",
-      "Park",
-      "Shopping Mall",
-      "Tourist Attraction",
-    ];
-    const randomPlaceType =
-      placeTypes[Math.floor(Math.random() * placeTypes.length)];
-
-    const destination: Destination = {
-      id: Date.now().toString(),
-      name: newDestinationName,
-      address: "123 Sample Street, Paris, France",
-      costs: [{ id: `${Date.now()}-1`, amount: 0, detail: "" }],
-      lat: 48.8566 + (Math.random() - 0.5) * 0.1,
-      lng: 2.3522 + (Math.random() - 0.5) * 0.1,
-      imageUrl: `https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=400&h=200&fit=crop`,
-      rating: 3.5 + Math.random() * 1.5, // Random rating between 3.5 and 5
-      reviewCount: Math.floor(Math.random() * 4950) + 50, // Random review count 50-5000
-      placeType: randomPlaceType,
-      openHours: "9:00 AM - 10:00 PM",
-      priceLevel: Math.floor(Math.random() * 4) + 1, // 1-4
-      website: "https://example.com",
-    };
-
-    onUpdate({
-      ...day,
-      destinations: [...day.destinations, destination],
-      optimizedRoute: [],
-    });
-
-    toast.success(t("destinationAdded", lang));
-    setIsAdding(false);
-    setError(null);
-
-    // Auto-scroll to show the new destination - using requestAnimationFrame for reliability
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        if (scrollContainerRef.current) {
-          const container = scrollContainerRef.current;
-          // Scroll to bottom with smooth animation
-          container.scrollTo({
-            top: container.scrollHeight,
-            behavior: 'smooth'
-          });
-        }
-      });
-    });
-  };
-
   const removeDestination = (id: string) => {
     onUpdate({
       ...day,
@@ -529,85 +495,21 @@ function DayViewContent({
     });
   };
 
-  const updateDestination = (
-    id: string,
-    updates: Partial<Destination>,
-  ) => {
-    onUpdate({
-      ...day,
-      destinations: day.destinations.map((d) =>
-        d.id === id ? { ...d, ...updates } : d,
-      ),
-      optimizedRoute: day.optimizedRoute.map((d) =>
-        d.id === id ? { ...d, ...updates } : d,
-      ),
+  function calculateDayTotal() {
+    let minTotal = 0, maxTotal = 0, isApprox = false;
+    day.destinations.forEach(dest => {
+      dest.costs.forEach(cost => {
+        const parsed = parseAmount(cost.amount);
+        minTotal += parsed.min;
+        maxTotal += parsed.max;
+        if (parsed.isApprox) isApprox = true;
+      });
     });
-  };
+    return { minTotal, maxTotal, isApprox };
+  }
 
-  const addCostItem = (destinationId: string) => {
-    const destination = day.destinations.find(
-      (d) => d.id === destinationId,
-    );
-    if (!destination) return;
-
-    const newCost: CostItem = {
-      id: `${Date.now()}-${destination.costs.length}`,
-      amount: 0,
-      detail: "",
-    };
-
-    updateDestination(destinationId, {
-      costs: [...destination.costs, newCost],
-    });
-  };
-
-  const updateCostItem = (
-    destinationId: string,
-    costId: string,
-    updates: Partial<CostItem>,
-  ) => {
-    const destination = day.destinations.find(
-      (d) => d.id === destinationId,
-    );
-    if (!destination) return;
-
-    updateDestination(destinationId, {
-      costs: destination.costs.map((c) =>
-        c.id === costId ? { ...c, ...updates } : c,
-      ),
-    });
-  };
-
-  const removeCostItem = (
-    destinationId: string,
-    costId: string,
-  ) => {
-    const destination = day.destinations.find(
-      (d) => d.id === destinationId,
-    );
-    if (!destination || destination.costs.length === 1) {
-      setError(t("mustHaveOneCostItem", lang));
-      return;
-    }
-
-    updateDestination(destinationId, {
-      costs: destination.costs.filter((c) => c.id !== costId),
-    });
-  };
-
-  const calculateDayTotal = () => {
-    return day.destinations.reduce((total, dest) => {
-      return (
-        total +
-        dest.costs.reduce(
-          (sum, cost) => sum + (cost.amount || 0),
-          0,
-        )
-      );
-    }, 0);
-  };
-
-  const currencySymbol = currency === "USD" ? "$" : "₫";
+  const dayTotal = calculateDayTotal();
+  const currencySymbol = currency === 'USD' ? 'USD' : 'VND';
 
   return (
     <>
@@ -666,6 +568,7 @@ function DayViewContent({
                   onSelect={setSelectedCardId}
                   scrollContainerRef={scrollContainerRef}
                   onDragStateChange={setIsAnyCardDragging}
+                  currency={currency}
                 />
               ))
             )}
@@ -680,8 +583,10 @@ function DayViewContent({
                   {t("total", lang)}:
                 </span>
                 <span className="text-[#004DB6]">
-                  {currencySymbol}
-                  {calculateDayTotal().toLocaleString()}
+                  {dayTotal.isApprox && dayTotal.minTotal !== dayTotal.maxTotal
+                    ? `${dayTotal.minTotal.toLocaleString()} – ${dayTotal.maxTotal.toLocaleString()}`
+                    : dayTotal.minTotal.toLocaleString()
+                  } {currencySymbol}
                 </span>
               </div>
             </div>
