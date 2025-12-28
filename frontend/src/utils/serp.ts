@@ -175,3 +175,17 @@ export async function getPlaceById(id: string) {
     if (!res.ok) return null;
     return await res.json();
 }
+
+export async function fetchUniqueTopTypes() {
+    const response = await fetch(`${API_HOST}/api/places/unique-top-types`, {
+        method: "GET",
+        headers: {
+            "Accept": "application/json"
+        }
+    });
+    if (!response.ok) {
+        console.error("API error:", response.status, await response.text());
+        return null;
+    }
+    return await response.json();
+}

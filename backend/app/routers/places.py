@@ -3,8 +3,10 @@ from fastapi import APIRouter, Depends, Query
 from ..place_models import Place, CityType, PlaceBase
 from ..place_schemas import PlaceIn, PlacesPayload, GPSCoordinates
 from ..place_database import get_db
+from ..services.gtranslate_service import translateEnToVi, translateViToEn
 from sqlalchemy.orm import Session
 from sqlalchemy import Integer, desc, func, text, JSON, Float
+import asyncio
 
 router = APIRouter()
 
@@ -96,7 +98,7 @@ def get_types_dict_from_stats(city_name: str, db: Session):
 @router.get("/api/places/manualsearch")
 def search_places(query: str, db=Depends(get_db)):
     try:
-        sql = text("SELECT * FROM places_search WHERE title MATCH :q LIMIT 1000")
+        sql = text("SELECT * FROM places_search WHERE title MATCH :q LIMIT 20")
         results = db.execute(sql, {"q": query}).mappings().all()
         return list(results)
     except Exception as e:
@@ -134,3 +136,47 @@ def get_place_by_id(id: str, db=Depends(get_db)):
         return place
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+@router.get("/api/places/unique-top-types")
+async def get_unique_top_types_per_city_json(db=Depends(get_db)):
+    # Get all city names
+    city_names = [
+        row[0]
+        for row in db.execute(
+            text("SELECT DISTINCT city_name FROM type_stats")
+        ).fetchall()
+    ]
+    used_type_ids = set()
+    all_items = []
+
+    for city in city_names:
+        rows = db.execute(
+            text(
+                "SELECT type_id FROM type_stats WHERE city_name = :city_name ORDER BY type_score DESC"
+            ),
+            {"city_name": city},
+        ).fetchall()
+        selected = []
+        for row in rows:
+            type_id = row[0]
+            if type_id not in used_type_ids:
+                selected.append(type_id)
+                used_type_ids.add(type_id)
+            if len(selected) == 10:
+                break
+        # Prepare label_en for translation
+        for type_id in selected:
+            label_en = type_id.replace("_", " ")
+            all_items.append({"id": type_id, "labelEN": label_en})
+
+    async def translate(item):
+        label_vi = await translateEnToVi(item["labelEN"])
+        item["labelVI"] = label_vi
+        return item
+
+    all_items = all_items = await asyncio.gather(
+        *(translate(item) for item in all_items)
+    )
+
+    return all_items

@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card } from "./ui/card";
 import { Search, Loader2, MapPin, Star, Plus, MapPinPlus } from "lucide-react";
 import { Destination } from "../types";
@@ -6,16 +6,21 @@ import { t } from "../locales/translations";
 import { useThemeColors } from "../hooks/useThemeColors";
 import { PlaceDetailsModal } from "./PlaceDetailsModal";
 import { handleSearch, getPlaceById } from "../utils/serp";
+import { fetchUniqueTopTypes } from "../utils/serp";
+import { detectCurrencyAndNormalizePrice } from "../utils/parseAmount";
 interface PlaceSearchViewProps {
   onAddDestination: (place: Destination) => Promise<void>;
   language: "EN" | "VI";
   selectedDayId: string;
+  currency: 'USD' | 'VND';
+  onCurrencyToggle: () => void;
 }
-
 export function PlaceSearchView({
   onAddDestination,
   language,
   selectedDayId,
+  currency,
+  onCurrencyToggle,
 }: PlaceSearchViewProps) {
   const lang = language.toLowerCase() as "en" | "vi";
   const { primary, secondary, light } = useThemeColors();
@@ -27,13 +32,21 @@ export function PlaceSearchView({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const filterContainerRef = useRef<HTMLDivElement>(null);
   const [selectedPlaceId, setSelectedPlaceId] = useState(null);
+  const [filterTypes, setFilterTypes] = useState<any[]>([]);
+
   const onSearchInputChange = async (value: string) => {
     setSearchQuery(value);
     if (value.trim()) {
       setIsSearching(true);
       const results = await handleSearch(value);
       console.log('Search results:', results);
-      setSearchResults(results);
+      const fullPlaces = await Promise.all(
+        results.map(async (place: any) => {
+          const fullPlace = await getPlaceById(place.place_id);
+          return fullPlace || place;
+        })
+      );
+      setSearchResults(fullPlaces);
       setIsSearching(false);
     } else {
       setSearchResults([]);
@@ -45,10 +58,36 @@ export function PlaceSearchView({
     setIsModalOpen(true);
   };
 
-  const handleAddToDay = async (place: Destination) => {
-    await onAddDestination(place);
+  const handleAddToDay = async (place: any) => {
+    // Fetch full place info by place_id
+    const fullPlace = await getPlaceById(place.place_id);
+    if (!fullPlace) return;
+
+    // Map backend result to Destination
+    const { detectedCurrency, normalizedPrice } = detectCurrencyAndNormalizePrice(fullPlace.price, currency);
+    if (detectedCurrency !== currency) {
+      onCurrencyToggle();
+    }
+    const destination: Destination = {
+      id: fullPlace.place_id,
+      name: fullPlace.title,
+      address: fullPlace.address || "",
+      costs: [{
+        id: `${Date.now()}-0`,
+        amount: normalizedPrice,
+        detail: "",
+        originalAmount: normalizedPrice,
+        originalCurrency: detectedCurrency,
+      }],
+      latitude: fullPlace.gps_coordinates.latitude,
+      longitude: fullPlace.gps_coordinates.longitude,
+      // ...add other fields as needed
+    };
+    await onAddDestination(destination);
     setIsModalOpen(false);
-    setSearchResults(searchResults.filter((p) => p.id !== place.id));
+    setSelectedPlace(null);
+    setSearchQuery("");
+    setSearchResults([]);
   };
 
   // Add button: fetch full place info and open modal
@@ -62,11 +101,21 @@ export function PlaceSearchView({
       setIsModalOpen(true);
     }
   };
+  useEffect(() => {
+    async function loadTypes() {
+      const types = await fetchUniqueTopTypes();
+      setFilterTypes([
+        { id: "All", labelEN: "All", labelVI: "Tất cả" }, // Optionally add "All"
+        ...types
+      ]);
+    }
+    loadTypes();
+  }, []);
 
   return (
     <>
       <Card
-        className="h-full sticky bg-white rounded-3xl pt-4 px-7 pb-8 border border-[#E5E7EB]"
+        className="h-full w-full max-w-[400px] sticky bg-white rounded-3xl pt-4 px-7 pb-8 border border-[#E5E7EB]"
         style={{
           boxShadow: "0 18px 40px rgba(15, 23, 42, 0.08)",
         }}
@@ -114,15 +163,8 @@ export function PlaceSearchView({
               <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
 
               {/* Scrollable Filter Chips */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                {[
-                  { id: "All", labelEN: "All", labelVI: "Tất cả" },
-                  { id: "Must-see", labelEN: "Must-see", labelVI: "Phải xem" },
-                  { id: "Food", labelEN: "Food", labelVI: "Ăn uống" },
-                  { id: "Cafe", labelEN: "Cafe", labelVI: "Cà phê" },
-                  { id: "Nature", labelEN: "Nature", labelVI: "Thiên nhiên" },
-                  { id: "Saved", labelEN: "Saved", labelVI: "Đã lưu" },
-                ].map((filter) => (
+              <div className="flex items-center overflow-x-auto min-w-0 gap-2 pb-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                {filterTypes.map((filter) => (
                   <div key={filter.id} id={`filter-chip-${filter.id}`}>
                     <button
                       onClick={() => {
@@ -216,11 +258,11 @@ export function PlaceSearchView({
                     }}
                   >
                     {/* Place Image - Left Side */}
-                    {place.imageUrl && (
+                    {place.thumbnail && (
                       <div className="w-32 h-32 rounded-lg overflow-hidden shrink-0">
                         <img
-                          src={place.imageUrl}
-                          alt={place.name}
+                          src={place.thumbnail}
+                          alt={place.title}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       </div>
@@ -240,7 +282,7 @@ export function PlaceSearchView({
                                 color: primary,
                               }}
                             >
-                              {place.placeType}
+                              {place.type}
                             </span>
                           )}
                         </div>
@@ -257,9 +299,9 @@ export function PlaceSearchView({
                               </span>
                               <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
                             </div>
-                            {place.reviewCount && (
+                            {place.reviews && (
                               <span className="text-xs text-gray-500">
-                                ({place.reviewCount.toLocaleString()})
+                                ({place.reviews.toLocaleString()})
                               </span>
                             )}
                           </div>

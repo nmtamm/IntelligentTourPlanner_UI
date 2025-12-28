@@ -596,6 +596,8 @@ export function CustomMode({
             }}
             language={language}
             selectedDayId={selectedDay}
+            currency={currency}
+            onCurrencyToggle={onCurrencyToggle}
           />
         </div>
 
