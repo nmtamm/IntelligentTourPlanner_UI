@@ -1,10 +1,13 @@
-import { useState, useEffect } from "react";
-import { X, MapPin, Star, Clock, DollarSign, ExternalLink, Trash2 } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { X, MapPin, Star, Clock, DollarSign, ExternalLink, Trash2, Wallet } from "lucide-react";
 import { Button } from "./ui/button";
 import { Destination } from "../types";
 import { t } from "../locales/translations";
 import { useThemeColors } from "../hooks/useThemeColors";
-
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvent, Polyline } from "react-leaflet";
+import 'leaflet/dist/leaflet.css';
+import { getPlaceById } from "../utils/serp";
+import { parseAmount } from "../utils/parseAmount";
 interface PlaceDetailsModalProps {
   place: Destination | null;
   isOpen: boolean;
@@ -14,6 +17,7 @@ interface PlaceDetailsModalProps {
   showAddButton?: boolean;
   onDelete?: (placeId: string) => void;
   showDeleteButton?: boolean;
+  currency: "USD" | "VND";
 }
 
 export function PlaceDetailsModal({
@@ -25,9 +29,14 @@ export function PlaceDetailsModal({
   showAddButton = false,
   onDelete,
   showDeleteButton = false,
+  currency,
 }: PlaceDetailsModalProps) {
+  if (!isOpen || !place) return null;
+
   const lang = language.toLowerCase() as "en" | "vi";
   const { primary, secondary, light } = useThemeColors();
+  const [detailedDestination, setDetailedDestination] = useState<Destination | null>(null);
+  const currencySymbol = currency === 'USD' ? 'USD' : 'VND';
 
   // Close on ESC key
   useEffect(() => {
@@ -44,40 +53,32 @@ export function PlaceDetailsModal({
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen || !place) return null;
+  useEffect(() => {
+    let isMounted = true;
+    getPlaceById(place.id).then((result) => {
+      if (isMounted) setDetailedDestination(result);
+    });
+    return () => { isMounted = false; };
+  }, [place.id]);
 
-  // Simple map coordinates calculation
-  const mapWidth = 500;
-  const mapHeight = 600;
-  const centerLat = place.lat;
-  const centerLng = place.lng;
-  const padding = 60;
+  const hasValidCoords =
+    typeof place.latitude === "number" &&
+    typeof place.longitude === "number" &&
+    !isNaN(place.latitude) &&
+    !isNaN(place.longitude);
 
-  // Add some zoom offset to show more area
-  const latOffset = 0.02;
-  const lngOffset = 0.02;
+  const defaultCenter: [number, number] = [10.770048, 106.699707];
+  const mapCenter: [number, number] = hasValidCoords
+    ? [place.latitude, place.longitude]
+    : defaultCenter;
 
-  const minLat = centerLat - latOffset;
-  const maxLat = centerLat + latOffset;
-  const minLng = centerLng - lngOffset;
-  const maxLng = centerLng + lngOffset;
-
-  const latRange = maxLat - minLat;
-  const lngRange = maxLng - minLng;
-
-  const toMapX = (lng: number) => {
-    return padding + ((lng - minLng) / lngRange) * (mapWidth - 2 * padding);
-  };
-
-  const toMapY = (lat: number) => {
-    return (
-      mapHeight - (padding + ((lat - minLat) / latRange) * (mapHeight - 2 * padding))
-    );
-  };
-
-  const markerX = toMapX(centerLng);
-  const markerY = toMapY(centerLat);
-
+  function MapCenterUpdater({ center }: { center: [number, number] }) {
+    const map = useMap();
+    useEffect(() => {
+      map.setView(center);
+    }, [center, map]);
+    return null;
+  }
   return (
     <>
       {/* Backdrop */}
@@ -113,10 +114,10 @@ export function PlaceDetailsModal({
               style={{ height: "100%" }}
             >
               {/* Thumbnail Image */}
-              {place.imageUrl && (
+              {detailedDestination?.thumbnail && (
                 <div className="w-full h-64 rounded-xl overflow-hidden shrink-0">
                   <img
-                    src={place.imageUrl}
+                    src={detailedDestination.thumbnail}
                     alt={place.name}
                     className="w-full h-full object-cover"
                   />
@@ -126,74 +127,22 @@ export function PlaceDetailsModal({
               {/* Map */}
               <div className="flex-1 flex items-center justify-center min-h-[400px]">
                 <div className="relative w-full h-full flex items-center justify-center">
-                  <svg
-                    width="90%"
-                    height="90%"
-                    viewBox={`0 0 ${mapWidth} ${mapHeight}`}
-                    className="rounded-xl"
-                    style={{ background: "#f0f9ff", maxHeight: "90%" }}
+                  <MapContainer
+                    center={mapCenter}
+                    zoom={13}
+                    style={{ height: '100%', width: '100%' }}
                   >
-                    {/* Grid lines for realistic map feel */}
-                    <defs>
-                      <pattern
-                        id="grid"
-                        width="40"
-                        height="40"
-                        patternUnits="userSpaceOnUse"
-                      >
-                        <path
-                          d="M 40 0 L 0 0 0 40"
-                          fill="none"
-                          stroke="#e0f2fe"
-                          strokeWidth="0.5"
-                        />
-                      </pattern>
-                    </defs>
-                    <rect width={mapWidth} height={mapHeight} fill="url(#grid)" />
-
-                    {/* Marker Shadow */}
-                    <ellipse
-                      cx={markerX}
-                      cy={markerY + 20}
-                      rx="12"
-                      ry="4"
-                      fill="rgba(0,0,0,0.2)"
+                    <MapCenterUpdater center={mapCenter} />
+                    <TileLayer
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     />
-
-                    {/* Marker Pin */}
-                    <g
-                      style={{
-                        filter: `drop-shadow(0 4px 8px rgba(0,0,0,0.2))`,
-                      }}
-                    >
-                      <circle
-                        cx={markerX}
-                        cy={markerY}
-                        r="14"
-                        fill="white"
-                        stroke={primary}
-                        strokeWidth="4"
-                      />
-                      <circle cx={markerX} cy={markerY} r="6" fill={primary} />
-                    </g>
-
-                    {/* Location name label */}
-                    <text
-                      x={markerX}
-                      y={markerY - 25}
-                      textAnchor="middle"
-                      fontSize="13"
-                      fontWeight="600"
-                      fill="#1e293b"
-                      style={{
-                        filter: "drop-shadow(0 1px 2px rgba(255,255,255,0.8))",
-                      }}
-                    >
-                      {place.name.length > 20
-                        ? place.name.substring(0, 20) + "..."
-                        : place.name}
-                    </text>
-                  </svg>
+                    {hasValidCoords && (
+                      <Marker position={mapCenter}>
+                        <Popup>{place.name}</Popup>
+                      </Marker>
+                    )}
+                  </MapContainer>
                 </div>
               </div>
             </div>
@@ -205,7 +154,7 @@ export function PlaceDetailsModal({
                 <h2 className="text-gray-900 text-2xl">{place.name}</h2>
 
                 {/* Place Type */}
-                {place.placeType && (
+                {detailedDestination?.type && (
                   <div>
                     <span
                       className="inline-block text-sm px-3 py-1.5 rounded-lg"
@@ -214,13 +163,13 @@ export function PlaceDetailsModal({
                         color: primary,
                       }}
                     >
-                      {place.placeType}
+                      {detailedDestination.type}
                     </span>
                   </div>
                 )}
 
                 {/* Rating & Review Count */}
-                {place.rating && (
+                {detailedDestination?.rating && (
                   <div className="flex items-center gap-2">
                     {/* Rating Badge */}
                     <div
@@ -228,11 +177,13 @@ export function PlaceDetailsModal({
                       style={{ backgroundColor: primary }}
                     >
                       <span className="text-white text-sm">
-                        {place.rating.toFixed(1)}
+                        {detailedDestination.rating.toFixed(1)}
                       </span>
                       <div className="flex items-center gap-0.5">
                         {[1, 2, 3, 4, 5].map((starIndex) => {
-                          const rating = place.rating || 0;
+                          const rating = detailedDestination?.rating !== undefined && detailedDestination?.rating !== null
+                            ? detailedDestination.rating
+                            : 4.5;
                           const isFullStar = starIndex <= Math.floor(rating);
                           const isHalfStar =
                             starIndex === Math.ceil(rating) && rating % 1 !== 0;
@@ -255,9 +206,9 @@ export function PlaceDetailsModal({
                     </div>
 
                     {/* Review Count */}
-                    {place.reviewCount && (
+                    {detailedDestination?.reviews && (
                       <span className="text-sm text-gray-600">
-                        ({place.reviewCount.toLocaleString()}{" "}
+                        ({detailedDestination?.reviews.toLocaleString()}{" "}
                         {language === "EN" ? "reviews" : "đánh giá"})
                       </span>
                     )}
@@ -276,59 +227,41 @@ export function PlaceDetailsModal({
                 )}
 
                 {/* Open Hours */}
-                {place.openHours && (
+                {detailedDestination?.hours && (
                   <div className="flex items-center gap-3 text-gray-700">
                     <Clock className="w-5 h-5 shrink-0" style={{ color: primary }} />
-                    <span className="text-sm">{place.openHours}</span>
-                  </div>
-                )}
-
-                {/* Price Level */}
-                {place.priceLevel && (
-                  <div className="flex items-center gap-3 text-gray-700">
-                    <DollarSign className="w-5 h-5 shrink-0" style={{ color: primary }} />
                     <span className="text-sm">
-                      {"💰".repeat(place.priceLevel)}
-                      <span className="text-gray-300">
-                        {"💰".repeat(4 - place.priceLevel)}
-                      </span>
+                      {detailedDestination.hours.split("·").map((part, idx) => (
+                        <React.Fragment key={idx}>
+                          {part.trim()}
+                          {idx < detailedDestination.hours.split("·").length - 1 && <br />}
+                        </React.Fragment>
+                      ))}
                     </span>
                   </div>
                 )}
 
-                {/* Costs (if already added to trip) */}
-                {place.costs &&
-                  place.costs.length > 0 &&
-                  place.costs[0].amount > 0 && (
-                    <div className="pt-2 border-t border-gray-200">
-                      <p className="text-xs text-gray-500 mb-2">
-                        {language === "EN" ? "Your Costs:" : "Chi phí của bạn:"}
-                      </p>
-                      <div className="space-y-1">
-                        {place.costs.map((cost) => (
-                          <div
-                            key={cost.id}
-                            className="text-sm text-gray-600 flex justify-between"
-                          >
-                            <span>
-                              {cost.detail ||
-                                (language === "EN" ? "Cost" : "Chi phí")}
-                            </span>
-                            <span className="text-gray-900">${cost.amount}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                {/* Price Level */}
+                {detailedDestination?.price && (
+                  <div className="flex items-center gap-3 text-gray-700">
+                    <Wallet className="w-4 h-4" />
+                    {(() => {
+                      const parsed = parseAmount(detailedDestination.price);
+                      return parsed.isApprox && parsed.min !== parsed.max
+                        ? `${parsed.min.toLocaleString()} \u2013 ${parsed.max.toLocaleString()}`
+                        : parsed.min.toLocaleString();
+                    })()} {currencySymbol}
+                  </div>
+                )}
 
                 {/* Action Buttons */}
                 <div className="flex gap-3 pt-4">
                   {/* Website Link */}
-                  {place.website && (
+                  {detailedDestination?.website && (
                     <Button
                       variant="outline"
                       className="flex-1 relative overflow-hidden group transition-all duration-200"
-                      onClick={() => window.open(place.website, "_blank")}
+                      onClick={() => window.open(detailedDestination.website, "_blank")}
                       style={{
                         borderColor: primary,
                         borderWidth: "2px",

@@ -10,6 +10,7 @@ import {
   Star,
   Clock,
   GripVertical,
+  Wallet,
 } from "lucide-react";
 import { DayPlan, Destination, CostItem } from "../types";
 import { toast } from "sonner";
@@ -375,6 +376,7 @@ function DraggableDestinationCard({
 
           {/* Price Level */}
           <div className="flex items-center gap-1.5 ml-7">
+            <Wallet className="w-4 h-4" />
             {isApprox
               ? `${minTotal.toLocaleString()} \u2013 ${maxTotal.toLocaleString()}`
               : minTotal.toLocaleString()
