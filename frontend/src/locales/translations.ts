@@ -1,3 +1,5 @@
+import { profile } from "console";
+
 export const TRANSLATIONS = {
   // Header & Navigation
   customMode: {
@@ -1587,6 +1589,38 @@ Bạn có thể đề cập một số chi tiết dưới đây để giúp chú
     en: "Failed to save trip plan. Please try again.",
     vi: "Lưu kế hoạch chuyến đi thất bại. Vui lòng thử lại."
   },
+  wrongNameOrPass: {
+    en: "Wrong username or password. Please try again.",
+    vi: "Sai tên đăng nhập hoặc mật khẩu. Vui lòng thử lại."
+  },
+  loginFailedCheckCredentials: {
+    en: "Login failed. Please check your credentials and try again.",
+    vi: "Đăng nhập thất bại. Vui lòng kiểm tra thông tin đăng nhập và thử lại."
+  },
+  enterNameAndPass: {
+    en: "Please enter both username and password.",
+    vi: "Vui lòng nhập cả tên đăng nhập và mật khẩu."
+  },
+  pleaseFillInAllFields: {
+    en: "Please fill in all fields.",
+    vi: "Vui lòng điền vào tất cả các trường."
+  },
+  userNameorEmailExists: {
+    en: "Username or email already exists. Please choose another.",
+    vi: "Tên đăng nhập hoặc email đã tồn tại. Vui lòng chọn cái khác.",
+  },
+  registationFailed: {
+    en: "Registration failed. Please try again.",
+    vi: "Đăng ký thất bại. Vui lòng thử lại.",
+  },
+  updateProfileFailed: {
+    en: "Profile update failed. Please try again.",
+    vi: "Cập nhật hồ sơ thất bại. Vui lòng thử lại.",
+  },
+  profileUpdated: {
+    en: "Profile updated successfully.",
+    vi: "Cập nhật hồ sơ thành công.",
+  }
 } as const;
 
 export type TranslationKey = keyof typeof TRANSLATIONS;

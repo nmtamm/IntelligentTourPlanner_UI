@@ -4,9 +4,9 @@ import { Input } from "./ui/input";
 import { Mail, Lock, User, Globe, MapPin, Compass, Flower2, Waves, Sun, Palmtree, Eye, EyeOff } from "lucide-react";
 import { useThemeColors } from "../hooks/useThemeColors";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
-
+import { loginUser, fetchUserProfile, registerUser } from '../api.js';
 interface IntroScreenProps {
-  onContinue: (userEmail?: string, username?: string, password?: string) => void;
+  onContinue: (user: any) => void;
   language: 'EN' | 'VI';
   onLanguageChange: (lang: 'EN' | 'VI') => void;
 }
@@ -67,16 +67,55 @@ export function IntroScreen({ onContinue, language, onLanguageChange }: IntroScr
 
   const lang = language.toLowerCase() as 'en' | 'vi';
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     // Use username as email if email is not provided (for login form)
     const loginEmail = email || `${username}@temp.com`;
-    onContinue(loginEmail, username, password);
+
+    try {
+      // Call backend login
+      const response = await loginUser({
+        username: username,
+        password: password,
+      });
+      localStorage.setItem("token", response.access_token);
+
+      // Fetch user profile after login
+      const userProfile = await fetchUserProfile(response.access_token);
+
+      // Pass user profile to parent (update your onContinue to accept user object if needed)
+      onContinue(userProfile); // or just onContinue(userProfile)
+    } catch (error) {
+      // Handle login error (optional: show error message)
+      alert("Login failed. Please check your credentials.");
+    }
   };
-  
-  const handleRegister = (e: React.FormEvent) => {
+
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    onContinue(email, username, password);
+    try {
+      // Call backend register
+      await registerUser({
+        username,
+        email,
+        password,
+      });
+
+      // After registration, log in the user to get the token
+      const response = await loginUser({
+        username,
+        password,
+      });
+      localStorage.setItem("token", response.access_token);
+
+      // Fetch user profile after login
+      const userProfile = await fetchUserProfile(response.access_token);
+
+      // Pass user profile to parent
+      onContinue(userProfile);
+    } catch (error) {
+      alert("Registration failed. Please try again.");
+    }
   };
 
   const toggleMode = () => {

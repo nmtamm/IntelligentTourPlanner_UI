@@ -28,7 +28,7 @@ interface PlanCardProps {
   onLoadPlan: (plan: { id: string; name: string; days: DayPlan[] }) => void;
   onDelete: (planId: string, e: React.MouseEvent) => void;
   lang: 'en' | 'vi';
-  currency;
+  currency: string;
 }
 
 function PlanCard({ plan, onLoadPlan, onDelete, lang, currency }: PlanCardProps) {
@@ -425,6 +425,7 @@ export function SavedPlans({ currentUser, onBack, onLoadPlan, onCreateNew, curre
                 onLoadPlan={onLoadPlan}
                 onDelete={handleDeletePlan}
                 lang={lang}
+                currency={currency}
               />
             );
           })}

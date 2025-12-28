@@ -13,7 +13,8 @@ import { Eye, EyeOff, User, Mail, Lock, Camera, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { t } from "../locales/translations";
 import { ErrorNotification } from "./ErrorNotification";
-
+import { updateProfile } from "../utils/profile";
+import { fetchUserProfile, changePassword } from "../api";
 interface AccountProfileProps {
   isOpen: boolean;
   onClose: () => void;
@@ -75,7 +76,7 @@ export function AccountProfile({
     reader.onloadend = () => {
       const base64String = reader.result as string;
       setAvatarUrl(base64String);
-      onUpdateProfile({ avatar: base64String });
+      handleUpdateProfile({ avatar: base64String });
       toast.success(t('avatarUpdated', lang));
       setError(null);
     };
@@ -85,14 +86,9 @@ export function AccountProfile({
     reader.readAsDataURL(file);
   };
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
       setError(t('fillAllFields', lang));
-      return;
-    }
-
-    if (currentPassword !== currentUser.password) {
-      setError(t('incorrectPassword', lang));
       return;
     }
 
@@ -106,21 +102,48 @@ export function AccountProfile({
       return;
     }
 
-    // Update password
-    onUpdateProfile({ password: newPassword });
-    toast.success(t('passwordChanged', lang));
-
-    // Reset form
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    setIsEditingPassword(false);
-    setError(null);
+    try {
+      const token = localStorage.getItem("token");
+      await changePassword(currentPassword, newPassword, token);
+      toast.success(t('passwordChanged', lang));
+      // Optionally refresh user data
+      if (token) {
+        const updatedUser = await fetchUserProfile(token);
+        onUpdateProfile(updatedUser);
+      }
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setIsEditingPassword(false);
+      setError(null);
+    } catch (err) {
+      setError(t('incorrectPassword', lang));
+    }
   };
 
   const getInitials = (username: string) => {
     return username.charAt(0).toUpperCase();
   };
+
+  async function handleUpdateProfile(updates: {
+    username?: string;
+    email?: string;
+    password?: string;
+    avatar?: string;
+  }) {
+    try {
+      await updateProfile(updates);
+      toast.success(t('profileUpdated', lang));
+      // Fetch latest user data from backend
+      const token = localStorage.getItem("token"); // or get from your auth context
+      if (token) {
+        const updatedUser = await fetchUserProfile(token);
+        onUpdateProfile(updatedUser); // update parent/local state
+      }
+    } catch (err) {
+      toast.error(t('updateProfileFailed', lang));
+    }
+  }
 
   return (
     <Dialog

@@ -14,15 +14,11 @@ import { toast } from "sonner";
 import { t } from "../locales/translations";
 import { ErrorNotification } from "./ErrorNotification";
 import { useThemeColors } from "../hooks/useThemeColors";
-
+import { loginUser, registerUser, fetchUserProfile } from '../api.js';
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLogin: (
-    email: string,
-    username?: string,
-    password?: string,
-  ) => void;
+  onLogin: (user: any) => void;
   language: "EN" | "VI";
 }
 
@@ -44,38 +40,91 @@ export function AuthModal({
     useState(false);
   const [isSubmitBtnPressed, setIsSubmitBtnPressed] =
     useState(false);
+  const [isLoginMode, setIsLoginMode] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrorMessage(null);
 
-    // Validation
-    if (isRegistering) {
-      if (
-        !username.trim() ||
-        !email.trim() ||
-        !password.trim()
-      ) {
-        setError(t("enterEmailPassword", lang));
-        return;
-      }
-    } else {
+    if (isLoginMode) {
+      // Login
       if (!username.trim() || !password.trim()) {
-        setError(t("enterEmailPassword", lang));
+        const msg = t('enterNameAndPass', lang);
+        setErrorMessage(msg);
+        toast.error(msg);
         return;
       }
-    }
 
-    // Simple mock authentication
-    if (isRegistering) {
-      toast.success(t("accountCreated", lang));
+      setLoading(true);
+      try {
+        const response = await loginUser({
+          username: username,
+          password: password
+        });
+
+        // Fetch user profile
+        const userProfile = await fetchUserProfile(response.access_token);
+        console.log('Fetched user profile:', userProfile);
+        // Store token
+        localStorage.setItem('token', response.access_token);
+
+        // Call parent onLogin with username
+        onLogin(userProfile);
+        toast.success('Logged in successfully!');
+
+        // Reset form
+        setEmail('');
+        setPassword('');
+        setUsername('');
+      } catch (error: any) {
+        console.error('Login error:', error);
+
+        // If backend returns 401 for wrong credentials
+        if (error?.response?.status === 401) {
+          setErrorMessage(t('wrongNameOrPass', lang));
+          toast.error(t('wrongNameOrPass', lang));
+        } else {
+          setErrorMessage(t('loginFailedCheckCredentials', lang));
+          toast.error(t('loginFailedCheckCredentials', lang));
+        }
+      } finally {
+        setLoading(false);
+      }
     } else {
-      toast.success(t("loggedInSuccess", lang));
+      // Register
+      if (!username.trim() || !email.trim() || !password.trim()) {
+        const msg = t('pleaseFillInAllFields', lang);
+        setErrorMessage(msg);
+        toast.error(msg);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        await registerUser({
+          username: username,
+          email: email,
+          password: password
+        });
+
+        toast.success('Registration successful! Please login.');
+        setIsLoginMode(true);
+        setErrorMessage(null);
+      } catch (error: any) {
+        console.error('Registration error:', error);
+        if (error.response?.status === 400) {
+          setErrorMessage(t('userNameorEmailExists', lang));
+          toast.error(t('userNameorEmailExists', lang));
+        } else {
+          setErrorMessage(t('registationFailed', lang));
+          toast.error(t('registationFailed', lang));
+        }
+      } finally {
+        setLoading(false);
+      }
     }
-    onLogin(email || username, username, password);
-    setUsername("");
-    setEmail("");
-    setPassword("");
-    setIsRegistering(false);
   };
 
   // Helper function to convert hex to rgba
@@ -97,14 +146,12 @@ export function AuthModal({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {isRegistering
-              ? t("createAccount", lang)
-              : t("loginTitle", lang)}
+            {isLoginMode ? t('login', lang) : t('createAccount', lang)}
           </DialogTitle>
           <DialogDescription>
-            {isRegistering
-              ? t("signupToStart", lang)
-              : t("loginToAccount", lang)}
+            {!isLoginMode
+              ? t('signupToStart', lang)
+              : t('loginToAccount', lang)}
           </DialogDescription>
         </DialogHeader>
 
@@ -135,7 +182,7 @@ export function AuthModal({
           </div>
 
           {/* Email Input - Only shown when registering */}
-          {isRegistering && (
+          {!isLoginMode && (
             <div className="space-y-2">
               <Label
                 htmlFor="email"
@@ -220,16 +267,16 @@ export function AuthModal({
               onMouseUp={() => setIsSubmitBtnPressed(false)}
               className="flex-1 text-white font-semibold rounded-md h-9"
               style={{
-                background: isRegistering
+                background: !isLoginMode
                   ? `linear-gradient(135deg, ${secondary} 0%, ${accent} 100%)`
                   : `linear-gradient(135deg, ${primary} 0%, ${secondary} 100%)`,
                 padding: "0 16px",
                 boxShadow: isSubmitBtnPressed
-                  ? isRegistering
+                  ? !isLoginMode
                     ? `0 2px 6px ${hexToRgba(secondary, 0.4)}`
                     : `0 2px 6px ${hexToRgba(primary, 0.4)}`
                   : isSubmitBtnHovered
-                    ? isRegistering
+                    ? !isLoginMode
                       ? `0 4px 12px ${hexToRgba(secondary, 0.3)}`
                       : `0 4px 12px ${hexToRgba(primary, 0.3)}`
                     : "none",
@@ -243,7 +290,7 @@ export function AuthModal({
                   : "all 150ms cubic-bezier(0.16,1,0.3,1)",
               }}
             >
-              {isRegistering
+              {!isLoginMode
                 ? t("startExploring", lang)
                 : t("loginTitle", lang)}
             </button>
@@ -252,13 +299,17 @@ export function AuthModal({
           <div className="text-center">
             <button
               type="button"
-              onClick={() => setIsRegistering(!isRegistering)}
+              onClick={() => {
+                setIsLoginMode(!isLoginMode);
+                setErrorMessage(null);
+              }}
               className="text-sm hover:underline transition-colors"
               style={{ color: primary }}
             >
-              {isRegistering
-                ? t("alreadyHaveAccount", lang)
-                : t("dontHaveAccount", lang)}
+              {!isLoginMode
+                ? t('alreadyHaveAccount', lang)
+                : t('dontHaveAccount', lang)}
+
             </button>
           </div>
         </form>

@@ -64,6 +64,7 @@ interface CustomModeProps {
   isLoggedIn: boolean;
   currentUser: string | null;
   planId?: string | null;
+  onPlanIdChange?: (planId: string) => void;
   resetToDefault?: boolean;
   showAllDaysOnLoad?: boolean;
   manualStepAction?: string | null;
@@ -84,6 +85,7 @@ export function CustomMode({
   isLoggedIn,
   currentUser,
   planId,
+  onPlanIdChange,
   resetToDefault,
   showAllDaysOnLoad,
   manualStepAction,
@@ -284,8 +286,6 @@ export function CustomMode({
 
     setIsSaving(true);
 
-    setIsSaving(true);
-
     if (!isLoggedIn) {
       toast.error(t('pleaseLogin', lang));
       setError(t('pleaseLogin', lang));
@@ -337,8 +337,9 @@ export function CustomMode({
         setHasUnsavedChanges(false);
         toast.success(t('planSaved', lang));
         console.log('Created trip:', created);
-        // Update planId so subsequent saves will update instead of create
-        // Note: You might want to pass this back to parent component
+        if (created?.id && typeof onPlanIdChange === "function") {
+          onPlanIdChange(created.id);
+        }
       }
     } catch (error) {
       const err = error as any;

@@ -65,40 +65,29 @@ function AppContent() {
   // Use theme hook
   const { currentTheme } = useTheme();
 
-  const handleLogin = (email: string, username?: string, password?: string) => {
+  const handleLogin = (user: { username: string; email: string; password?: string; avatar?: string }) => {
     setIsLoggedIn(true);
-    setCurrentUser(email);
-    
-    // Create user profile
+    setCurrentUser(user.email);
+
     setUserProfile({
-      username: username || email.split('@')[0],
-      email: email,
-      password: password || 'defaultPassword123', // In real app, this would be hashed
-      avatar: undefined
+      username: user.username,
+      email: user.email,
+      password: user.password || 'defaultPassword123', // You may want to omit this for security
+      avatar: user.avatar
     });
-    
+
     setIsAuthModalOpen(false);
     setShowIntro(false);
   };
 
-  const handleContinueFromIntro = (userEmail?: string, username?: string, password?: string) => {
-    if (userEmail) {
-      // User logged in or registered
+  const handleContinueFromIntro = (user: { username: string; email: string; password?: string; avatar?: string }) => {
+    if (user) {
       setIsLoggedIn(true);
-      setCurrentUser(userEmail);
-      
-      // Create user profile
-      setUserProfile({
-        username: username || userEmail.split('@')[0],
-        email: userEmail,
-        password: password || 'defaultPassword123',
-        avatar: undefined
-      });
+      setCurrentUser(user.email);
+      setUserProfile(user);
     } else {
-      // Guest user - automatically open user manual
       setIsUserManualOpen(true);
     }
-    // Close intro screen
     setShowIntro(false);
   };
 
@@ -121,7 +110,7 @@ function AppContent() {
         ...userProfile,
         ...updates
       });
-      
+
       // Update currentUser if email changed
       if (updates.email) {
         setCurrentUser(updates.email);
@@ -129,17 +118,21 @@ function AppContent() {
     }
   };
 
-  const handleLoadPlan = (plan: SavedPlan) => {
+  const handleLoadPlan = (plan: {
+    id: string;
+    name: string;
+    days: DayPlan[];
+  }) => {
     setTripData({ name: plan.name, days: plan.days });
     setCurrentPlanId(plan.id);
     setShowSavedPlans(false);
-    
+
     // Switch to View mode when loading a plan
     setMode("view");
-    
+
     // Trigger View All Days mode when a plan is loaded
     setShowAllDaysOnLoad(true);
-    
+
     // Reset the trigger after a brief moment
     setTimeout(() => {
       setShowAllDaysOnLoad(false);
@@ -166,13 +159,13 @@ function AppContent() {
     // Navigate back to Custom Mode view (default screen)
     // Keep all user data intact - don't clear anything
     setShowSavedPlans(false);
-    
+
     // Trigger reset to default views in CustomMode
     setResetViewsToDefault(true);
-    
+
     // Open the User Manual
     setIsUserManualOpen(true);
-    
+
     // Reset the trigger after a brief moment
     setTimeout(() => {
       setResetViewsToDefault(false);
@@ -183,13 +176,13 @@ function AppContent() {
     // Navigate back to Custom Mode view (default screen)
     // Keep all user data intact - don't clear anything
     setShowSavedPlans(false);
-    
+
     // Trigger reset to default views in CustomMode
     setResetViewsToDefault(true);
-    
+
     // Close the User Manual
     setIsUserManualOpen(false);
-    
+
     // Reset the trigger after a brief moment
     setTimeout(() => {
       setResetViewsToDefault(false);
@@ -197,8 +190,8 @@ function AppContent() {
   };
 
   return (
-    <div 
-      className="min-h-screen" 
+    <div
+      className="min-h-screen"
       style={{ background: showIntro ? undefined : currentTheme.colors.background }}
     >
       {/* Sidebar - Hidden on Intro Screen */}
@@ -246,6 +239,8 @@ function AppContent() {
             onLoadPlan={handleLoadPlan}
             onCreateNew={handleCreateNewPlan}
             language={language}
+            currency={currency}
+            AICommand={mode === "custom" ? "assist in creating a travel plan" : "assist in viewing a travel plan"}
           />
         ) : (
           <CustomMode
@@ -272,6 +267,7 @@ function AppContent() {
             isLoggedIn={isLoggedIn}
             currentUser={currentUser}
             planId={currentPlanId}
+            onPlanIdChange={setCurrentPlanId}
             resetToDefault={resetViewsToDefault}
             showAllDaysOnLoad={showAllDaysOnLoad}
           />
