@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { CustomMode } from "./components/CustomMode";
+import { GpsGate } from "./components/GpsGate";
 import { AuthModal } from "./components/AuthModal";
 import { AccountProfile } from "./components/AccountProfile";
 import { SavedPlans } from "./components/SavedPlans";
@@ -36,6 +37,7 @@ interface UserProfile {
 }
 
 function AppContent() {
+  const gpsApiUrl = 'http://localhost:8000/api/location';
   const [showIntro, setShowIntro] = useState(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isAccountProfileOpen, setIsAccountProfileOpen] = useState(false);
@@ -61,6 +63,9 @@ function AppContent() {
   const [resetViewsToDefault, setResetViewsToDefault] = useState(false);
   const [showAllDaysOnLoad, setShowAllDaysOnLoad] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [AICommand, setAICommand] = useState<string | null>(null);
+  const [AICommandPayload, setAICommandPayload] = useState<any>(null);
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
   // Use theme hook
   const { currentTheme } = useTheme();
@@ -189,131 +194,153 @@ function AppContent() {
     }, 100);
   };
 
-  return (
-    <div
-      className="min-h-screen"
-      style={{ background: showIntro ? undefined : currentTheme.colors.background }}
-    >
-      {/* Sidebar - Hidden on Intro Screen */}
-      {!showIntro && (
-        <Sidebar
-          mode={mode}
-          onModeChange={setMode}
-          onSettingsClick={() => setIsSettingsOpen(true)}
-          onUserManualClick={handleOpenUserManual}
-          onMyPlansClick={() => {
-            if (isLoggedIn) {
-              setShowSavedPlans(true);
-            } else {
-              setIsAuthModalOpen(true);
-            }
-          }}
-          onLoginClick={() => {
-            if (isLoggedIn) {
-              // Show account profile modal
-              setIsAccountProfileOpen(true);
-            } else {
-              setIsAuthModalOpen(true);
-            }
-          }}
-          isLoggedIn={isLoggedIn}
-          currentUser={currentUser}
-          language={language}
-          isMyPlansActive={showSavedPlans && isLoggedIn}
-          userAvatar={userProfile?.avatar}  // ← NEW LINE ADDED
-        />
-      )}
+  const handleAICommand = (command: string, payload?: any) => {
+    // Handle commands that affect App state directly
+    if (command === "open_user_manual") setIsUserManualOpen(true);
+    else if (command === "change_language") setLanguage(language === "EN" ? "VI" : "EN");
+    else if (command === "change_currency") setCurrency(currency === "USD" ? "VND" : "USD");
+    else if (command === "show_saved_plan" && isLoggedIn) setShowSavedPlans(true);
+    else if (command === "delete_all_saved_plans" || command === "delete_saved_plan_ith")
+      setShowSavedPlans(true);
 
-      {/* Main Content */}
-      <main className={showIntro ? "min-h-screen" : "pl-24 pr-4 pt-4 pb-4 max-w-[100vw] mx-auto"}>
-        {showIntro ? (
-          <IntroScreen
-            onContinue={handleContinueFromIntro}
-            language={language}
-            onLanguageChange={setLanguage}
-          />
-        ) : showSavedPlans && isLoggedIn ? (
-          <SavedPlans
-            currentUser={currentUser!}
-            onBack={() => setShowSavedPlans(false)}
-            onLoadPlan={handleLoadPlan}
-            onCreateNew={handleCreateNewPlan}
-            language={language}
-            currency={currency}
-            AICommand={mode === "custom" ? "assist in creating a travel plan" : "assist in viewing a travel plan"}
-          />
-        ) : (
-          <CustomMode
-            tripData={
-              tripData || {
-                name: "",
-                days: [
-                  {
-                    id: "1",
-                    dayNumber: 1,
-                    destinations: [],
-                    optimizedRoute: [],
-                  },
-                ],
-              }
-            }
-            onUpdate={setTripData}
-            currency={currency}
-            onCurrencyToggle={() =>
-              setCurrency(currency === "USD" ? "VND" : "USD")
-            }
-            language={language}
+    // For commands that need to be passed down (with or without payload)
+    setAICommand(command);
+    setAICommandPayload(payload);
+  };
+
+  return (
+    <GpsGate gpsApiUrl={gpsApiUrl} onLocation={setUserLocation}>
+      <div
+        className="min-h-screen"
+        style={{ background: showIntro ? undefined : currentTheme.colors.background }}
+      >
+        {/* Sidebar - Hidden on Intro Screen */}
+        {!showIntro && (
+          <Sidebar
             mode={mode}
+            onModeChange={setMode}
+            onSettingsClick={() => setIsSettingsOpen(true)}
+            onUserManualClick={handleOpenUserManual}
+            onMyPlansClick={() => {
+              if (isLoggedIn) {
+                setShowSavedPlans(true);
+              } else {
+                setIsAuthModalOpen(true);
+              }
+            }}
+            onLoginClick={() => {
+              if (isLoggedIn) {
+                // Show account profile modal
+                setIsAccountProfileOpen(true);
+              } else {
+                setIsAuthModalOpen(true);
+              }
+            }}
             isLoggedIn={isLoggedIn}
             currentUser={currentUser}
-            planId={currentPlanId}
-            onPlanIdChange={setCurrentPlanId}
-            resetToDefault={resetViewsToDefault}
-            showAllDaysOnLoad={showAllDaysOnLoad}
+            language={language}
+            isMyPlansActive={showSavedPlans && isLoggedIn}
+            userAvatar={userProfile?.avatar}  // ← NEW LINE ADDED
           />
         )}
-      </main>
 
-      {/* Auth Modal */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        onLogin={handleLogin}
-        language={language}
-      />
+        {/* Main Content */}
+        <main className={showIntro ? "min-h-screen" : "pl-24 pr-4 pt-4 pb-4 max-w-[100vw] mx-auto"}>
+          {showIntro ? (
+            <IntroScreen
+              onContinue={handleContinueFromIntro}
+              language={language}
+              onLanguageChange={setLanguage}
+            />
+          ) : showSavedPlans && isLoggedIn ? (
+            <SavedPlans
+              currentUser={currentUser!}
+              onBack={() => setShowSavedPlans(false)}
+              onLoadPlan={handleLoadPlan}
+              onCreateNew={handleCreateNewPlan}
+              language={language}
+              currency={currency}
+              AICommand={AICommand}
+              onAICommand={handleAICommand}
+              onAIActionComplete={setAICommand(null)}
+            />
+          ) : (
+            <CustomMode
+              tripData={
+                tripData || {
+                  name: "",
+                  days: [
+                    {
+                      id: "1",
+                      dayNumber: 1,
+                      destinations: [],
+                      optimizedRoute: [],
+                    },
+                  ],
+                }
+              }
+              onUpdate={setTripData}
+              currency={currency}
+              onCurrencyToggle={() =>
+                setCurrency(currency === "USD" ? "VND" : "USD")
+              }
+              language={language}
+              mode={mode}
+              isLoggedIn={isLoggedIn}
+              currentUser={currentUser}
+              planId={currentPlanId}
+              onPlanIdChange={setCurrentPlanId}
+              resetToDefault={resetViewsToDefault}
+              showAllDaysOnLoad={showAllDaysOnLoad}
+              AICommand={AICommand}
+              onAIActionComplete={() => setAICommand(null)}
+              onAICommand={handleAICommand}
+              userLocation={userLocation}
+            />
+          )}
+        </main>
 
-      {/* Account Profile Modal */}
-      {userProfile && (
-        <AccountProfile
-          isOpen={isAccountProfileOpen}
-          onClose={() => setIsAccountProfileOpen(false)}
-          onLogout={handleLogout}
-          currentUser={userProfile}
-          onUpdateProfile={handleUpdateProfile}
+        {/* Auth Modal */}
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+          onLogin={handleLogin}
           language={language}
         />
-      )}
 
-      {/* User Manual */}
-      <UserManual
-        isOpen={isUserManualOpen}
-        onClose={handleCloseUserManual}
-        language={language}
-        currentMode={mode}
-        onModeChange={setMode}
-      />
+        {/* Account Profile Modal */}
+        {userProfile && (
+          <AccountProfile
+            isOpen={isAccountProfileOpen}
+            onClose={() => setIsAccountProfileOpen(false)}
+            onLogout={handleLogout}
+            currentUser={userProfile}
+            onUpdateProfile={handleUpdateProfile}
+            language={language}
+          />
+        )}
 
-      {/* Settings Modal */}
-      <Settings
-        currency={currency}
-        language={language}
-        onCurrencyToggle={() => setCurrency(currency === "USD" ? "VND" : "USD")}
-        onLanguageToggle={() => setLanguage(language === "EN" ? "VI" : "EN")}
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        asModal={true}
-      />
-    </div>
+        {/* User Manual */}
+        <UserManual
+          isOpen={isUserManualOpen}
+          onClose={handleCloseUserManual}
+          language={language}
+          currentMode={mode}
+          onModeChange={setMode}
+        />
+
+        {/* Settings Modal */}
+        <Settings
+          currency={currency}
+          language={language}
+          onCurrencyToggle={() => setCurrency(currency === "USD" ? "VND" : "USD")}
+          onLanguageToggle={() => setLanguage(language === "EN" ? "VI" : "EN")}
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          asModal={true}
+        />
+      </div>
+    </GpsGate >
   );
 }
 

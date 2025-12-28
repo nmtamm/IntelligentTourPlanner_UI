@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Send, Sparkles, Bot, User } from 'lucide-react';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
-
+import { detectAndExecuteGroqCommand } from '../utils/groq';
+import { set } from 'date-fns';
 interface Message {
   id: string;
   type: 'user' | 'ai';
@@ -13,9 +14,12 @@ interface Message {
 
 interface ChatBoxProps {
   language: 'EN' | 'VI';
+  AICommand?: string | null;
+  onAIActionComplete?: () => void;
+  onAICommand?: (command: string, payload?: any) => void;
 }
 
-export function ChatBox({ language }: ChatBoxProps) {
+export function ChatBox({ language, AICommand, onAIActionComplete, onAICommand }: ChatBoxProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -39,7 +43,7 @@ export function ChatBox({ language }: ChatBoxProps) {
     scrollToBottom();
   }, [messages]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim()) return;
 
     // Add user message
@@ -55,19 +59,35 @@ export function ChatBox({ language }: ChatBoxProps) {
     setIsTyping(true);
 
     // Simulate AI response
-    setTimeout(() => {
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: 'ai',
-        content:
-          language === 'EN'
-            ? 'I understand! Let me help you with that. I can assist with planning destinations, estimating budgets, and optimizing routes.'
-            : 'Tôi hiểu rồi! Để tôi giúp bạn với điều đó. Tôi có thể hỗ trợ lên kế hoạch điểm đến, ước tính ngân sách và tối ưu hóa lộ trình.',
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, aiMessage]);
+    // setTimeout(() => {
+    //   const aiMessage: Message = {
+    //     id: (Date.now() + 1).toString(),
+    //     type: 'ai',
+    //     content:
+    //       language === 'EN'
+    //         ? 'I understand! Let me help you with that. I can assist with planning destinations, estimating budgets, and optimizing routes.'
+    //         : 'Tôi hiểu rồi! Để tôi giúp bạn với điều đó. Tôi có thể hỗ trợ lên kế hoạch điểm đến, ước tính ngân sách và tối ưu hóa lộ trình.',
+    //     timestamp: new Date(),
+    //   };
+    //   setMessages((prev) => [...prev, aiMessage]);
+    //   setIsTyping(false);
+    // }, 1500);
+
+    try {
+      // Call GROQ command detection and execution
+      const result = await detectAndExecuteGroqCommand(input);
+
+      // Send the result back to parent component
+      if (onAICommand && result.command) {
+        const { command, ...payload } = result;
+        onAICommand(command, payload);
+      }
       setIsTyping(false);
-    }, 1500);
+    }
+    catch (error) {
+      console.error('Error detecting/executing GROQ command:', error);
+      setIsTyping(false);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -122,8 +142,8 @@ export function ChatBox({ language }: ChatBoxProps) {
               )}
               <div
                 className={`rounded-2xl px-2 py-2 ${message.type === 'user'
-                    ? 'text-gray-900'
-                    : 'text-gray-900'
+                  ? 'text-gray-900'
+                  : 'text-gray-900'
                   }`}
               >
                 <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>

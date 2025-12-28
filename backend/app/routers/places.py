@@ -86,12 +86,19 @@ def get_available_categories(city_name: str, db: Session):
 
 
 def get_types_dict_from_stats(city_name: str, db: Session):
-    rows = db.execute(
-        text(
-            "SELECT type_id FROM type_stats WHERE city_name = :city_name ORDER BY type_score DESC"
-        ),
-        {"city_name": city_name},
-    ).fetchall()
+    limit = 330 if city_name == "HCMC, Vietnam" else None
+    sql = "SELECT type_id FROM type_stats WHERE city_name = :city_name ORDER BY type_score DESC"
+    if limit:
+        sql += " LIMIT :limit"
+        rows = db.execute(
+            text(sql),
+            {"city_name": city_name, "limit": limit},
+        ).fetchall()
+    else:
+        rows = db.execute(
+            text(sql),
+            {"city_name": city_name},
+        ).fetchall()
     return {"types": [{"name": row[0], "id": row[0]} for row in rows]}
 
 

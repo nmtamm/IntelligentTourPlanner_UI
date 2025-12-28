@@ -41,7 +41,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "./ui/popover";
-import { format, addDays, differenceInDays } from "date-fns";
+import { format, addDays, differenceInDays, set } from "date-fns";
 import { t } from "../locales/translations";
 import { useThemeColors } from "../hooks/useThemeColors";
 import { convertCurrency, convertAllDays } from "../utils/exchangerate";
@@ -67,8 +67,8 @@ interface CustomModeProps {
   onPlanIdChange?: (planId: string) => void;
   resetToDefault?: boolean;
   showAllDaysOnLoad?: boolean;
-  manualStepAction?: string | null;
-  onManualActionComplete?: () => void;
+  AICommand?: string | null;
+  onAIActionComplete?: () => void;
   onAICommand?: (command: string, payload?: any) => void;
   userLocation?: { latitude: number; longitude: number } | null;
 }
@@ -88,8 +88,8 @@ export function CustomMode({
   onPlanIdChange,
   resetToDefault,
   showAllDaysOnLoad,
-  manualStepAction,
-  onManualActionComplete,
+  AICommand,
+  onAIActionComplete,
   onAICommand,
   userLocation
 }: CustomModeProps) {
@@ -257,12 +257,6 @@ export function CustomMode({
       )
     ).filter(Boolean); // Remove any unmatched
 
-    console.log("Optimized Route: %O", optimizedRoute);
-
-    for (let d in reorderedDestinations) {
-      console.log("Reordered Destinations: %O", reorderedDestinations[d]);
-    }
-
     updateDay(selectedDay, {
       ...day,
       destinations: reorderedDestinations,
@@ -409,6 +403,206 @@ export function CustomMode({
     });
   };
 
+  // const handleAICommand = async (command: string, payload?: any) => {
+  //   switch (command) {
+  //     case 'create_itinerary':
+  //       if (payload && payload.itinerary) {
+  //         const result = payload.itinerary;
+  //         console.log("AI Itinerary Result:", result);
+  //         if (result.trip_info) {
+  //           if (result.trip_info.trip_name) updateTripName(result.trip_info.trip_name);
+  //           if (result.trip_info.num_people) setMembers(String(result.trip_info.num_people));
+  //           if (result.trip_info.start_day && !isNaN(Date.parse(result.trip_info.start_day))) {
+  //             const parsedStart = new Date(result.trip_info.start_day);
+  //             setStartDate(parsedStart);
+  //             console.log("Parsing start day", result.trip_info.start_day);
+  //             console.log("Start day", parsedStart);
+
+  //             // If end_day is also present, create days immediately
+  //             if (result.trip_info.end_day && !isNaN(Date.parse(result.trip_info.end_day))) {
+  //               const parsedEnd = new Date(result.trip_info.end_day);
+  //               setEndDate(parsedEnd);
+  //               console.log("Parsing end day", result.trip_info.end_day);
+  //               console.log("End day", parsedEnd);
+
+  //               // Calculate number of days
+  //               const daysCount = differenceInDays(parsedEnd, parsedStart) + 1;
+  //               if (daysCount > 0) {
+  //                 const days: DayPlan[] = [];
+  //                 for (let i = 0; i < daysCount; i++) {
+  //                   days.push({
+  //                     id: String(i + 1),
+  //                     dayNumber: i + 1,
+  //                     destinations: [],
+  //                     optimizedRoute: [],
+  //                   });
+  //                 }
+  //                 handleTripDataChange({
+  //                   ...localTripData,
+  //                   days,
+  //                 });
+  //               }
+  //             }
+  //           }
+  //         }
+  //         if (
+  //           userLocation &&
+  //           Array.isArray(result.categories) &&
+  //           (result.valid_starting_point === undefined || result.valid_starting_point === true)
+  //         ) {
+  //           const allPlaces = await generatePlaces(result, userLocation);
+  //           console.log("Fetched places:", allPlaces);
+  //           const mappedPlaces = allPlaces.map(place => {
+  //             const { detectedCurrency, normalizedPrice } = detectCurrencyAndNormalizePrice(place.price, currency);
+  //             if (detectedCurrency !== currency) {
+  //               onCurrencyToggle();
+  //             }
+  //             return {
+  //               id: place.place_id,
+  //               name: place.title,
+  //               address: place.address || "",
+  //               costs: [{
+  //                 id: `${Date.now()}-0`,
+  //                 amount: normalizedPrice,
+  //                 detail: "",
+  //                 originalAmount: normalizedPrice,
+  //                 originalCurrency: detectedCurrency,
+  //               }],
+  //               latitude: place.gps_coordinates.latitude,
+  //               longitude: place.gps_coordinates.longitude,
+  //             };
+  //           });
+  //           findOptimalRoute(mappedPlaces);
+  //         } else if (result.valid_starting_point === false) {
+  //           toast.error("Starting point must be Da Lat, Ho Chi Minh City, or Hue, Vietnam.");
+  //         }
+  //         break;
+  //       }
+  //     default:
+  //       console.warn("Unknown AI command:", command);
+  //   }
+  // }
+  const handleAICommand = async (command: string, payload?: any) => {
+    switch (command) {
+      case 'create_itinerary':
+        if (payload && payload.itinerary) {
+          const result = payload.itinerary;
+          console.log("AI Itinerary Result:", result);
+
+          let parsedStart: Date | undefined;
+          let parsedEnd: Date | undefined;
+          let daysCount = 1;
+
+          // 1. Parse trip info and set trip name, members, dates
+          if (result.trip_info) {
+            if (result.trip_info.trip_name) updateTripName(result.trip_info.trip_name);
+            if (result.trip_info.num_people) setMembers(String(result.trip_info.num_people));
+            if (result.trip_info.start_day && !isNaN(Date.parse(result.trip_info.start_day))) {
+              parsedStart = new Date(result.trip_info.start_day);
+              setStartDate(parsedStart);
+              console.log("Parsing start day", result.trip_info.start_day);
+              console.log("Start day", parsedStart);
+            }
+            if (result.trip_info.end_day && !isNaN(Date.parse(result.trip_info.end_day))) {
+              parsedEnd = new Date(result.trip_info.end_day);
+              setEndDate(parsedEnd);
+              console.log("Parsing end day", result.trip_info.end_day);
+              console.log("End day", parsedEnd);
+            }
+          }
+
+          // 2. Create days array based on date range
+          if (parsedStart && parsedEnd) {
+            daysCount = differenceInDays(parsedEnd, parsedStart) + 1;
+            if (daysCount > 0) {
+              const days: DayPlan[] = [];
+              for (let i = 0; i < daysCount; i++) {
+                days.push({
+                  id: String(i + 1),
+                  dayNumber: i + 1,
+                  destinations: [],
+                  optimizedRoute: [],
+                });
+              }
+              handleTripDataChange({
+                ...localTripData,
+                days,
+              });
+            }
+          }
+
+          // 3. Generate and map places, then distribute among days
+          if (
+            userLocation &&
+            Array.isArray(result.categories) &&
+            (result.valid_starting_point === undefined || result.valid_starting_point === true)
+          ) {
+            const allPlaces = await generatePlaces(result, userLocation);
+            console.log("Fetched places:", allPlaces);
+            const mappedPlaces = allPlaces.map(place => {
+              const { detectedCurrency, normalizedPrice } = detectCurrencyAndNormalizePrice(place.price, currency);
+              if (detectedCurrency !== currency) {
+                onCurrencyToggle();
+              }
+              return {
+                id: place.place_id,
+                name: place.title,
+                address: place.address || "",
+                costs: [{
+                  id: `${Date.now()}-0`,
+                  amount: normalizedPrice,
+                  detail: "",
+                  originalAmount: normalizedPrice,
+                  originalCurrency: detectedCurrency,
+                }],
+                latitude: place.gps_coordinates.latitude,
+                longitude: place.gps_coordinates.longitude,
+              };
+            });
+
+            // 4. Divide mappedPlaces into subsets for each day
+            if (daysCount > 1 && mappedPlaces.length > 0) {
+              const perDay = Math.floor(mappedPlaces.length / daysCount);
+              const remainder = mappedPlaces.length % daysCount;
+              let assigned = 0;
+              const newDays: DayPlan[] = [];
+              for (let i = 0; i < daysCount; i++) {
+                const count = perDay + (i < remainder ? 1 : 0);
+                newDays.push({
+                  ...localTripData.days[i],
+                  id: String(i + 1),
+                  dayNumber: i + 1,
+                  destinations: mappedPlaces.slice(assigned, assigned + count),
+                  optimizedRoute: [],
+                });
+                assigned += count;
+              }
+              handleTripDataChange({
+                ...localTripData,
+                days: newDays,
+              });
+            } else if (mappedPlaces.length > 0) {
+              // Fallback: single day
+              handleTripDataChange({
+                ...localTripData,
+                days: [
+                  {
+                    ...localTripData.days[0],
+                    destinations: mappedPlaces,
+                    optimizedRoute: [],
+                  },
+                ],
+              });
+            }
+          } else if (result.valid_starting_point === false) {
+            toast.error("Starting point must be Da Lat, Ho Chi Minh City, or Hue, Vietnam.");
+          }
+          break;
+        }
+      default:
+        console.warn("Unknown AI command:", command);
+    }
+  }
   // Reset to default view states when User Manual is opened
   useEffect(() => {
     if (resetToDefault) {
@@ -902,7 +1096,12 @@ export function CustomMode({
 
       {/* Right Side - Chat Box (30%) */}
       <div className="w-3/10 min-w-[300px] h-full">
-        <ChatBox language={language} />
+        <ChatBox
+          language={language}
+          AICommand={AICommand}
+          onAICommand={handleAICommand}
+          onAIActionComplete={onAIActionComplete}
+        />
       </div>
 
       {/* Error Notification */}

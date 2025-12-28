@@ -33,7 +33,7 @@ export function PlaceSearchView({
   const filterContainerRef = useRef<HTMLDivElement>(null);
   const [selectedPlaceId, setSelectedPlaceId] = useState(null);
   const [filterTypes, setFilterTypes] = useState<any[]>([]);
-
+  const [allImagesLoaded, setAllImagesLoaded] = useState(false);
   const onSearchInputChange = async (value: string) => {
     setSearchQuery(value);
     if (value.trim()) {
@@ -101,6 +101,9 @@ export function PlaceSearchView({
       setIsModalOpen(true);
     }
   };
+
+  const resultsToShow = searchResults;
+
   useEffect(() => {
     async function loadTypes() {
       const types = await fetchUniqueTopTypes();
@@ -111,7 +114,31 @@ export function PlaceSearchView({
     }
     loadTypes();
   }, []);
+  useEffect(() => {
+    if (!resultsToShow.length) {
+      setAllImagesLoaded(true);
+      return;
+    }
+    setAllImagesLoaded(false);
+    let loaded = 0;
+    const images = resultsToShow
+      .filter(place => place.thumbnail)
+      .map(place => `/assets/${place.place_id}.jpg`); // Use the same src as in <img>
 
+    if (images.length === 0) {
+      setAllImagesLoaded(true);
+      return;
+    }
+
+    images.forEach(src => {
+      const img = new window.Image();
+      img.onload = img.onerror = () => {
+        loaded += 1;
+        if (loaded === images.length) setAllImagesLoaded(true);
+      };
+      img.src = src;
+    });
+  }, [resultsToShow]);
   return (
     <>
       <Card
@@ -251,7 +278,14 @@ export function PlaceSearchView({
 
           {/* Search Results */}
           <div className="flex-1 overflow-y-auto">
-            {searchResults.length === 0 ? (
+            {!allImagesLoaded ? (
+              <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                <Loader2 className="w-16 h-16 mb-4 animate-spin opacity-30" />
+                <p className="text-sm text-center">
+                  {t("loadingImages", lang) || "Loading images..."}
+                </p>
+              </div>
+            ) : resultsToShow.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-gray-400">
                 <Search className="w-16 h-16 mb-4 opacity-30" />
                 <p className="text-sm text-center">
@@ -261,9 +295,9 @@ export function PlaceSearchView({
             ) : (
               <div className="space-y-3">
                 <p className="text-sm text-gray-600 px-2">
-                  {t("searchResults", lang)} ({searchResults.length})
+                  {t("searchResults", lang)} ({resultsToShow.length})
                 </p>
-                {[...new Map(searchResults.map(place => [place.place_id, place])).values()].map((place: any) => (
+                {[...new Map(resultsToShow.map(place => [place.place_id, place])).values()].map((place: any) => (
                   <div
                     key={place.place_id}
                     className="bg-white border border-gray-200 rounded-xl p-3 cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-1 group flex gap-3"
@@ -284,7 +318,7 @@ export function PlaceSearchView({
                     {place.thumbnail && (
                       <div className="w-32 h-32 rounded-lg overflow-hidden shrink-0">
                         <img
-                          src={place.thumbnail}
+                          src={`/assets/${place.place_id}.jpg`}
                           alt={place.title}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
@@ -377,6 +411,7 @@ export function PlaceSearchView({
         language={language}
         onAddToDay={handleAddToDay}
         showAddButton={true}
+        currency={currency}
       />
     </>
   );

@@ -26,7 +26,7 @@ interface MapViewProps {
   language: 'EN' | 'VI';
   mode?: 'custom' | 'view';
   focusedDestination?: Destination | null;
-  onOptimizeRoute?: (destinations: Destination[]) => Promise<void>;
+  onOptimizeRoute: (destinations: Destination[]) => Promise<void>;
   isOptimizing?: boolean;
   onDestinationClick?: (destination: Destination) => void;
   AICommand?: string | null;

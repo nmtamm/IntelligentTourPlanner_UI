@@ -1620,6 +1620,10 @@ Bạn có thể đề cập một số chi tiết dưới đây để giúp chú
   profileUpdated: {
     en: "Profile updated successfully.",
     vi: "Cập nhật hồ sơ thành công.",
+  },
+  loadingImages: {
+    en: "Loading images...",
+    vi: "Đang tải hình ảnh...",
   }
 } as const;
 
