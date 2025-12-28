@@ -4,7 +4,7 @@ import { t } from "../locales/translations";
 import { useThemeColors } from "../hooks/useThemeColors";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { useRef, useEffect, useState } from "react";
-
+import { getPlaceById } from "../utils/serp";
 interface ViewModePlacesGalleryProps {
   days: DayPlan[];
   selectedDayId: string;
@@ -13,7 +13,15 @@ interface ViewModePlacesGalleryProps {
   onPlaceSelect: (place: Destination) => void;
   language: "EN" | "VI";
 }
-
+function preloadImage(src: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (!src) return resolve();
+    const img = new window.Image();
+    img.onload = () => resolve();
+    img.onerror = reject;
+    img.src = src;
+  });
+}
 export function ViewModePlacesGallery({
   days,
   selectedDayId,
@@ -25,13 +33,14 @@ export function ViewModePlacesGallery({
   const lang = language.toLowerCase() as "en" | "vi";
   const { primary, light } = useThemeColors();
   const thumbnailRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
-  
+
   // Track hover and pressed states for each day chip
   const [hoveredDayId, setHoveredDayId] = useState<string | null>(null);
   const [pressedDayId, setPressedDayId] = useState<string | null>(null);
 
   const selectedDay = days.find((d) => d.id === selectedDayId);
   const destinations = selectedDay?.destinations || [];
+  const [loadingPlaceId, setLoadingPlaceId] = useState<string | null>(null);
 
   // Auto-scroll to selected thumbnail when selectedPlaceId changes
   useEffect(() => {
@@ -47,14 +56,28 @@ export function ViewModePlacesGallery({
   // Calculate glow shadow for selected day chip
   const getGlowShadow = (dayId: string) => {
     if (selectedDayId !== dayId) return 'none';
-    
+
     // Two-layer glow system matching DayChip
     const innerGlow = '0 0 28px rgba(59, 130, 246, 0.40)';
     const outerGlow = '0 0 70px rgba(59, 130, 246, 0.20)';
-    
+
     return `${innerGlow}, ${outerGlow}`;
   };
-
+  const handlePlaceSelect = async (place: Destination) => {
+    setLoadingPlaceId(place.id);
+    try {
+      const fullPlace = await getPlaceById(place.id);
+      if (fullPlace.imageUrl) {
+        await preloadImage(fullPlace.imageUrl);
+      }
+      onPlaceSelect(fullPlace);
+    } catch (e) {
+      // Optionally handle error
+      onPlaceSelect(place); // fallback to original
+    } finally {
+      setLoadingPlaceId(null);
+    }
+  };
   return (
     <Card
       className="shrink-0 rounded-[24px] border border-[#E5E7EB] flex flex-col"
@@ -77,7 +100,7 @@ export function ViewModePlacesGallery({
           const isSelected = selectedDayId === day.id;
           const isHovered = hoveredDayId === day.id;
           const isPressed = pressedDayId === day.id;
-          
+
           return (
             <button
               key={day.id}
@@ -95,13 +118,13 @@ export function ViewModePlacesGallery({
                 color: isSelected ? "white" : "#64748B",
                 borderColor: isSelected ? primary : "#E2E8F0",
                 boxShadow: getGlowShadow(day.id),
-                transform: isPressed 
-                  ? 'scale(0.97)' 
+                transform: isPressed
+                  ? 'scale(0.97)'
                   : (isHovered && isSelected ? 'scale(1.03)' : 'scale(1.00)'),
-                transitionDuration: isSelected 
+                transitionDuration: isSelected
                   ? (isPressed ? '120ms' : '180ms')
                   : '200ms',
-                transitionTimingFunction: isSelected 
+                transitionTimingFunction: isSelected
                   ? (isPressed ? 'ease-out' : 'cubic-bezier(0.16, 1, 0.3, 1)')
                   : 'ease-in',
               }}
@@ -126,7 +149,7 @@ export function ViewModePlacesGallery({
             {destinations.map((place) => (
               <button
                 key={place.id}
-                onClick={() => onPlaceSelect(place)}
+                onClick={() => handlePlaceSelect(place)}
                 className="group flex flex-col shrink-0 transition-all duration-200 hover:scale-105"
                 style={{
                   width: "160px",
@@ -143,9 +166,9 @@ export function ViewModePlacesGallery({
                   }}
                 >
                   <div className="absolute inset-0">
-                    {place.imageUrl ? (
+                    {place ? (
                       <img
-                        src={place.imageUrl}
+                        src={`./assets/${place.id}.jpg`}
                         alt={place.name}
                         className="w-full h-full object-cover"
                       />

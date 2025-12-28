@@ -185,6 +185,7 @@ def detect_and_execute_command(client: Groq, user_prompt: str, db: Session) -> d
     # Prepare a list of natural expressions and descriptions for the prompt
     command_expressions = [f'{cmd["natural_expression"]}' for cmd in commands]
     natural_to_name = {cmd["natural_expression"]: cmd["name"] for cmd in commands}
+    name_to_command = {cmd["name"]: cmd for cmd in commands}
 
     # Build a prompt for Groq to classify the command
     groq_prompt = f"""
@@ -220,46 +221,83 @@ Return your answer as a JSON object: {{"natural_expression": "<expression>"}}
 
     try:
         result = json.loads(response.choices[0].message.content)
-        print("Groq Command Detection Result:", result)
         natural_expression = result.get("natural_expression", "unknown")
     except Exception:
         return {"error": "Could not parse command from LLM response."}
 
     # Map the detected natural expression back to the internal command name
     command = natural_to_name.get(natural_expression, "unknown")
+    command_info = name_to_command.get(command, {})
+
+    response_en = command_info.get("response_en", "")
+    response_vi = command_info.get("response_vi", "")
 
     if command == "create_itinerary":
         categories = list_tourist_recommendations(client, user_prompt, db)
-        return {"command": "create_itinerary", "itinerary": categories}
+        return {
+            "command": "create_itinerary",
+            "itinerary": categories,
+            "response_en": response_en,
+            "response_vi": response_vi,
+        }
     elif command == "update_trip_name":
         info = extract_trip_info(client, user_prompt)
-        return {"command": command, "trip_name": info.get("trip_name", "")}
+        return {
+            "command": command,
+            "trip_name": info.get("trip_name", ""),
+            "response_en": response_en,
+            "response_vi": response_vi,
+        }
     elif command == "update_members":
         info = extract_trip_info(client, user_prompt)
-        return {"command": command, "members": info.get("members", 0)}
+        return {
+            "command": command,
+            "members": info.get("members", 0),
+            "response_en": response_en,
+            "response_vi": response_vi,
+        }
     elif command == "update_start_date":
         info = extract_trip_info(client, user_prompt)
-        return {"command": command, "start_day": info.get("start_day", "")}
+        return {
+            "command": command,
+            "start_day": info.get("start_day", ""),
+            "response_en": response_en,
+            "response_vi": response_vi,
+        }
     elif command == "update_end_date":
         info = extract_trip_info(client, user_prompt)
-        return {"command": command, "end_day": info.get("end_day", "")}
+        return {
+            "command": command,
+            "end_day": info.get("end_day", ""),
+            "response_en": response_en,
+            "response_vi": response_vi,
+        }
     elif command == "swap_day":
         info = swap_day(client, user_prompt)
         return {
             "command": command,
             "day1": info.get("day1", 0),
             "day2": info.get("day2", 0),
+            "response_en": response_en,
+            "response_vi": response_vi,
         }
     elif command == "add_new_day_after_ith":
         print("Executing add_day_after_ith_day command")
         info = add_new_day_after_ith_day(client, user_prompt)
-        return {"command": command, "day": info.get("day", 0)}
+        return {
+            "command": command,
+            "day": info.get("day", 0),
+            "response_en": response_en,
+            "response_vi": response_vi,
+        }
     elif command == "delete_range_of_days":
         info = delete_day_range(client, user_prompt)
         return {
             "command": command,
             "start_day": info.get("start_day", 0),
             "end_day": info.get("end_day", 0),
+            "response_en": response_en,
+            "response_vi": response_vi,
         }
     elif command == "add_new_destination":
         info = add_new_destination(client, user_prompt, db)
@@ -267,15 +305,31 @@ Return your answer as a JSON object: {{"natural_expression": "<expression>"}}
             "command": command,
             "destination": info.get("destination", ""),
             "matches": info.get("matches", []),
+            "response_en": response_en,
+            "response_vi": response_vi,
         }
     elif command == "delete_saved_plan_ith":
         info = delete_saved_plan_ith(client, user_prompt)
-        return {"command": command, "plan_index": info.get("plan_index", 0)}
+        return {
+            "command": command,
+            "plan_index": info.get("plan_index", 0),
+            "response_en": response_en,
+            "response_vi": response_vi,
+        }
     elif command == "find_route_of_pair_ith":
         info = find_route_of_pair_ith(client, user_prompt)
-        return {"command": command, "pair_index": info.get("pair_index", 0)}
+        return {
+            "command": command,
+            "pair_index": info.get("pair_index", 0),
+            "response_en": response_en,
+            "response_vi": response_vi,
+        }
     elif command in [cmd["name"] for cmd in commands]:
-        return {"command": command}
+        return {
+            "command": command,
+            "response_en": response_en,
+            "response_vi": response_vi,
+        }
     else:
         return {"error": "No matching command found."}
 
@@ -389,25 +443,31 @@ Instruction: {user_prompt}
         if not destination:
             return {"error": "No destination found in prompt."}
 
-        # Use the manualsearch function logic to search for the place by name
-        sql = text("SELECT * FROM places_search WHERE title MATCH :q LIMIT 10")
-        db_results = db.execute(sql, {"q": destination}).mappings().first()
-        matches = []
-        for db_result in db_results:
-            place_id = db_result.get("place_id")
+        matches = manual_search_places(destination, db, limit=10)
+        # Optionally, fetch full records from places table as you do now
+        full_matches = []
+        for match in matches:
+            place_id = match.get("place_id")
             if place_id:
                 place_sql = text("SELECT * FROM places WHERE place_id = :id")
                 place_row = db.execute(place_sql, {"id": place_id}).fetchone()
                 if place_row:
-                    place = dict(place_row)
-                    matches.append(place)
+                    full_matches.append(dict(place_row._mapping))
                 else:
-                    matches.append(dict(db_result))
+                    print("No full place record found for match:", match)
+                    full_matches.append(dict(match))
             else:
-                matches.append(dict(db_result))
-        return {"destination": destination, "matches": matches}
+                print("No place_id in match:", match)
+                full_matches.append(dict(match))
+        return {"destination": destination, "matches": full_matches}
     except Exception as e:
         return {"error": str(e)}
+
+
+def manual_search_places(query: str, db: Session, limit: int = 20):
+    sql = text("SELECT * FROM places_search WHERE title MATCH :q LIMIT :limit")
+    results = db.execute(sql, {"q": query, "limit": limit}).mappings().all()
+    return list(results)
 
 
 def delete_saved_plan_ith(client: Groq, user_prompt: str) -> dict:

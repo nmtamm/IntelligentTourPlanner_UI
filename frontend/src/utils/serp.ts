@@ -1,7 +1,8 @@
 import { geocodeDestination } from "./geocode";
 import { API_HOST } from './config';
 import { fetchTouristCategories } from "./categories";
-
+import { detectCurrencyAndNormalizePrice } from "./parseAmount";
+import { Destination } from "../types";
 export async function fetchSerpLocalResults(query: string, ll: string) {
     const response = await fetch(
         `${API_HOST}/api/serp/locations?query=${encodeURIComponent(query)}&ll=${encodeURIComponent(ll)}`,
@@ -188,4 +189,26 @@ export async function fetchUniqueTopTypes() {
         return null;
     }
     return await response.json();
+}
+
+export function mapPlaceToDestination(place: any, currency: 'USD' | 'VND', onCurrencyToggle: () => void): Destination {
+    const { detectedCurrency, normalizedPrice } = detectCurrencyAndNormalizePrice(place.price, currency);
+    if (detectedCurrency !== currency) {
+        onCurrencyToggle();
+    }
+    return {
+        id: place.place_id,
+        name: place.title,
+        address: place.address || "",
+        costs: [{
+            id: `${Date.now()}-0`,
+            amount: normalizedPrice,
+            detail: "",
+            originalAmount: normalizedPrice,
+            originalCurrency: detectedCurrency,
+        }],
+        latitude: place.gps_coordinates?.latitude,
+        longitude: place.gps_coordinates?.longitude,
+        // ...add other fields as needed
+    };
 }

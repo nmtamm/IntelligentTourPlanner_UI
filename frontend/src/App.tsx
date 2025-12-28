@@ -261,8 +261,9 @@ function AppContent() {
               language={language}
               currency={currency}
               AICommand={AICommand}
+              AICommandPayload={AICommandPayload}
               onAICommand={handleAICommand}
-              onAIActionComplete={setAICommand(null)}
+              onAIActionComplete={() => setAICommand(null)}
             />
           ) : (
             <CustomMode

@@ -1624,6 +1624,10 @@ Bạn có thể đề cập một số chi tiết dưới đây để giúp chú
   loadingImages: {
     en: "Loading images...",
     vi: "Đang tải hình ảnh...",
+  },
+  destinationAlreadyExists: {
+    en: "Destination already exists for this day.",
+    vi: "Điểm đến đã tồn tại cho ngày này.",
   }
 } as const;
 

@@ -8,12 +8,15 @@ import { PlaceDetailsModal } from "./PlaceDetailsModal";
 import { handleSearch, getPlaceById } from "../utils/serp";
 import { fetchUniqueTopTypes } from "../utils/serp";
 import { detectCurrencyAndNormalizePrice } from "../utils/parseAmount";
+import { mapPlaceToDestination } from "../utils/serp";
 interface PlaceSearchViewProps {
   onAddDestination: (place: Destination) => Promise<void>;
   language: "EN" | "VI";
   selectedDayId: string;
   currency: 'USD' | 'VND';
   onCurrencyToggle: () => void;
+  AIMatches: Destination[] | null;
+  onAIMatchesReset?: () => void,
 }
 export function PlaceSearchView({
   onAddDestination,
@@ -21,6 +24,8 @@ export function PlaceSearchView({
   selectedDayId,
   currency,
   onCurrencyToggle,
+  AIMatches,
+  onAIMatchesReset,
 }: PlaceSearchViewProps) {
   const lang = language.toLowerCase() as "en" | "vi";
   const { primary, secondary, light } = useThemeColors();
@@ -54,7 +59,8 @@ export function PlaceSearchView({
   };
 
   const handlePlaceClick = (place: Destination) => {
-    setSelectedPlace(place);
+    const destination = mapPlaceToDestination(place, currency, onCurrencyToggle);
+    setSelectedPlace(destination);
     setIsModalOpen(true);
   };
 
@@ -62,27 +68,7 @@ export function PlaceSearchView({
     // Fetch full place info by place_id
     const fullPlace = await getPlaceById(place.place_id);
     if (!fullPlace) return;
-
-    // Map backend result to Destination
-    const { detectedCurrency, normalizedPrice } = detectCurrencyAndNormalizePrice(fullPlace.price, currency);
-    if (detectedCurrency !== currency) {
-      onCurrencyToggle();
-    }
-    const destination: Destination = {
-      id: fullPlace.place_id,
-      name: fullPlace.title,
-      address: fullPlace.address || "",
-      costs: [{
-        id: `${Date.now()}-0`,
-        amount: normalizedPrice,
-        detail: "",
-        originalAmount: normalizedPrice,
-        originalCurrency: detectedCurrency,
-      }],
-      latitude: fullPlace.gps_coordinates.latitude,
-      longitude: fullPlace.gps_coordinates.longitude,
-      // ...add other fields as needed
-    };
+    const destination = mapPlaceToDestination(fullPlace, currency, onCurrencyToggle);
     await onAddDestination(destination);
     setIsModalOpen(false);
     setSelectedPlace(null);
@@ -102,7 +88,7 @@ export function PlaceSearchView({
     }
   };
 
-  const resultsToShow = searchResults;
+  const resultsToShow = AIMatches && AIMatches.length > 0 ? AIMatches : searchResults;
 
   useEffect(() => {
     async function loadTypes() {
@@ -173,14 +159,20 @@ export function PlaceSearchView({
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   onKeyPress={e => {
-                    if (e.key === "Enter") onSearchInputChange(searchQuery);
+                    if (e.key === "Enter") {
+                      if (onAIMatchesReset) onAIMatchesReset();
+                      onSearchInputChange(searchQuery);
+                    }
                   }}
                   disabled={isSearching}
                   className="flex-1 bg-transparent border-none outline-none text-gray-700 placeholder:text-gray-400 text-[14px] transition-all"
                 />
 
                 <button
-                  onClick={() => onSearchInputChange(searchQuery)}
+                  onClick={() => {
+                    if (onAIMatchesReset) onAIMatchesReset();
+                    onSearchInputChange(searchQuery);
+                  }}
                   disabled={isSearching || !searchQuery.trim()}
                   className="absolute right-0 top-0 bottom-0 px-4 rounded-xl text-white flex items-center justify-center transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed shadow-md hover:shadow-lg hover:scale-105 active:scale-95 group-focus-within:shadow-xl"
                   style={{

@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import { detectAndExecuteGroqCommand } from '../utils/groq';
 import { set } from 'date-fns';
+import { detectLanguage } from '../utils/gtranslate';
 interface Message {
   id: string;
   type: 'user' | 'ai';
@@ -58,22 +59,10 @@ export function ChatBox({ language, AICommand, onAIActionComplete, onAICommand }
     setInput('');
     setIsTyping(true);
 
-    // Simulate AI response
-    // setTimeout(() => {
-    //   const aiMessage: Message = {
-    //     id: (Date.now() + 1).toString(),
-    //     type: 'ai',
-    //     content:
-    //       language === 'EN'
-    //         ? 'I understand! Let me help you with that. I can assist with planning destinations, estimating budgets, and optimizing routes.'
-    //         : 'Tôi hiểu rồi! Để tôi giúp bạn với điều đó. Tôi có thể hỗ trợ lên kế hoạch điểm đến, ước tính ngân sách và tối ưu hóa lộ trình.',
-    //     timestamp: new Date(),
-    //   };
-    //   setMessages((prev) => [...prev, aiMessage]);
-    //   setIsTyping(false);
-    // }, 1500);
-
     try {
+      // Detect user input language
+      const detectedLang = await detectLanguage(input);
+
       // Call GROQ command detection and execution
       const result = await detectAndExecuteGroqCommand(input);
 
@@ -82,6 +71,23 @@ export function ChatBox({ language, AICommand, onAIActionComplete, onAICommand }
         const { command, ...payload } = result;
         onAICommand(command, payload);
       }
+
+      // Show AI response in the same language as user input
+      let aiContent = result.response_en;
+      if (detectedLang === 'vi') aiContent = result.response_vi;
+      else if (detectedLang === 'en') aiContent = result.response_en;
+      else aiContent = result.response_en || result.response_vi; // fallback
+
+      if (aiContent) {
+        const aiMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          type: 'ai',
+          content: aiContent,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, aiMessage]);
+      }
+
       setIsTyping(false);
     }
     catch (error) {

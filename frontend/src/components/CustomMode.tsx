@@ -45,7 +45,7 @@ import { format, addDays, differenceInDays, set } from "date-fns";
 import { t } from "../locales/translations";
 import { useThemeColors } from "../hooks/useThemeColors";
 import { convertCurrency, convertAllDays } from "../utils/exchangerate";
-import { fetchPlacesData, generatePlaces, savePlacesToBackend } from "../utils/serp";
+import { fetchPlacesData, generatePlaces, mapPlaceToDestination, savePlacesToBackend } from "../utils/serp";
 import { geocodeDestination } from "../utils/geocode";
 import { makeDestinationFromGeo } from "../utils/destinationFactory";
 import { sendLocationToBackend } from "../utils/geolocation";
@@ -119,7 +119,7 @@ export function CustomMode({
   const [isEstimating, setIsEstimating] = useState(false);
   const dayChipsContainerRef = useRef<HTMLDivElement>(null);
   const [latestAIResult, setLatestAIResult] = useState<any>(null);
-
+  const [AIMatches, setAIMatches] = useState<Destination[] | null>(null);
 
   const handleTripDataChange = (newData: {
     name: string;
@@ -403,86 +403,8 @@ export function CustomMode({
     });
   };
 
-  // const handleAICommand = async (command: string, payload?: any) => {
-  //   switch (command) {
-  //     case 'create_itinerary':
-  //       if (payload && payload.itinerary) {
-  //         const result = payload.itinerary;
-  //         console.log("AI Itinerary Result:", result);
-  //         if (result.trip_info) {
-  //           if (result.trip_info.trip_name) updateTripName(result.trip_info.trip_name);
-  //           if (result.trip_info.num_people) setMembers(String(result.trip_info.num_people));
-  //           if (result.trip_info.start_day && !isNaN(Date.parse(result.trip_info.start_day))) {
-  //             const parsedStart = new Date(result.trip_info.start_day);
-  //             setStartDate(parsedStart);
-  //             console.log("Parsing start day", result.trip_info.start_day);
-  //             console.log("Start day", parsedStart);
-
-  //             // If end_day is also present, create days immediately
-  //             if (result.trip_info.end_day && !isNaN(Date.parse(result.trip_info.end_day))) {
-  //               const parsedEnd = new Date(result.trip_info.end_day);
-  //               setEndDate(parsedEnd);
-  //               console.log("Parsing end day", result.trip_info.end_day);
-  //               console.log("End day", parsedEnd);
-
-  //               // Calculate number of days
-  //               const daysCount = differenceInDays(parsedEnd, parsedStart) + 1;
-  //               if (daysCount > 0) {
-  //                 const days: DayPlan[] = [];
-  //                 for (let i = 0; i < daysCount; i++) {
-  //                   days.push({
-  //                     id: String(i + 1),
-  //                     dayNumber: i + 1,
-  //                     destinations: [],
-  //                     optimizedRoute: [],
-  //                   });
-  //                 }
-  //                 handleTripDataChange({
-  //                   ...localTripData,
-  //                   days,
-  //                 });
-  //               }
-  //             }
-  //           }
-  //         }
-  //         if (
-  //           userLocation &&
-  //           Array.isArray(result.categories) &&
-  //           (result.valid_starting_point === undefined || result.valid_starting_point === true)
-  //         ) {
-  //           const allPlaces = await generatePlaces(result, userLocation);
-  //           console.log("Fetched places:", allPlaces);
-  //           const mappedPlaces = allPlaces.map(place => {
-  //             const { detectedCurrency, normalizedPrice } = detectCurrencyAndNormalizePrice(place.price, currency);
-  //             if (detectedCurrency !== currency) {
-  //               onCurrencyToggle();
-  //             }
-  //             return {
-  //               id: place.place_id,
-  //               name: place.title,
-  //               address: place.address || "",
-  //               costs: [{
-  //                 id: `${Date.now()}-0`,
-  //                 amount: normalizedPrice,
-  //                 detail: "",
-  //                 originalAmount: normalizedPrice,
-  //                 originalCurrency: detectedCurrency,
-  //               }],
-  //               latitude: place.gps_coordinates.latitude,
-  //               longitude: place.gps_coordinates.longitude,
-  //             };
-  //           });
-  //           findOptimalRoute(mappedPlaces);
-  //         } else if (result.valid_starting_point === false) {
-  //           toast.error("Starting point must be Da Lat, Ho Chi Minh City, or Hue, Vietnam.");
-  //         }
-  //         break;
-  //       }
-  //     default:
-  //       console.warn("Unknown AI command:", command);
-  //   }
-  // }
   const handleAICommand = async (command: string, payload?: any) => {
+    if (onAICommand) onAICommand(command, payload);
     switch (command) {
       case 'create_itinerary':
         if (payload && payload.itinerary) {
@@ -540,24 +462,9 @@ export function CustomMode({
             const allPlaces = await generatePlaces(result, userLocation);
             console.log("Fetched places:", allPlaces);
             const mappedPlaces = allPlaces.map(place => {
-              const { detectedCurrency, normalizedPrice } = detectCurrencyAndNormalizePrice(place.price, currency);
-              if (detectedCurrency !== currency) {
-                onCurrencyToggle();
-              }
-              return {
-                id: place.place_id,
-                name: place.title,
-                address: place.address || "",
-                costs: [{
-                  id: `${Date.now()}-0`,
-                  amount: normalizedPrice,
-                  detail: "",
-                  originalAmount: normalizedPrice,
-                  originalCurrency: detectedCurrency,
-                }],
-                latitude: place.gps_coordinates.latitude,
-                longitude: place.gps_coordinates.longitude,
-              };
+              const dest = mapPlaceToDestination(place, currency, onCurrencyToggle);
+              // Optionally add/override fields here
+              return dest;
             });
 
             // 4. Divide mappedPlaces into subsets for each day
@@ -599,6 +506,138 @@ export function CustomMode({
           }
           break;
         }
+      case 'add_new_day': {
+        addDay();
+        break;
+      }
+      case 'add_new_day_after_current': {
+        console.log("Adding new day after current day:", selectedDay);
+        addDayAfter(selectedDay);
+        break;
+      }
+
+      case 'add_new_day_after_ith': {
+        const dayIndex = payload?.day;
+        if (dayIndex && !isNaN(Number(dayIndex))) {
+          addDayAfter(String(dayIndex));
+        }
+        break;
+      }
+
+      case 'update_trip_name': {
+        const newName = payload?.trip_name;
+        if (newName && typeof newName === "string") {
+          updateTripName(newName);
+        }
+        break;
+      }
+
+      case 'update_members': {
+        const newMembers = payload?.members;
+        if (newMembers && !isNaN(Number(newMembers))) {
+          setMembers(String(newMembers));
+        }
+        break;
+      }
+
+      case 'update_start_date': {
+        const newStartDay = payload?.start_day;
+        if (newStartDay && !isNaN(Date.parse(newStartDay))) {
+          setStartDate(new Date(newStartDay));
+        }
+        break;
+      }
+
+      case 'update_end_date': {
+        const newEndDay = payload?.end_day;
+        if (newEndDay && !isNaN(Date.parse(newEndDay))) {
+          setEndDate(new Date(newEndDay));
+        }
+        break;
+      }
+
+      case 'view_all_days': {
+        setViewMode("all");
+        break;
+      }
+
+      case 'delete_current_day': {
+        removeDay(selectedDay);
+        break;
+      }
+
+      case 'delete_all_days': {
+        const newDay: DayPlan = {
+          id: "1",
+          dayNumber: 1,
+          destinations: [],
+          optimizedRoute: [],
+        };
+        handleTripDataChange({
+          ...localTripData,
+          days: [newDay],
+        });
+        setSelectedDay("1");
+        break;
+      }
+
+      case 'swap_day': {
+        const dayId1 = payload?.day1;
+        const dayId2 = payload?.day2;
+        if (dayId1 && dayId2) {
+          swapDays(String(dayId1), String(dayId2));
+        }
+        break;
+      }
+
+      case 'delete_range_of_days': {
+        const startDay = payload?.start_day;
+        const endDay = payload?.end_day;
+        console.log("Deleting range of days:", startDay, endDay);
+        if (startDay && endDay && !isNaN(Number(startDay)) && !isNaN(Number(endDay))) {
+          const startIdx = Number(startDay) - 1;
+          const endIdx = Number(endDay) - 1;
+          const newDays = localTripData.days
+            .filter((_, idx) => idx < startIdx || idx > endIdx)
+            .map((day, idx) => ({
+              ...day,
+              id: String(idx + 1),
+              dayNumber: idx + 1,
+            }));
+          handleTripDataChange({
+            ...localTripData,
+            days: newDays,
+          });
+          // Optionally update selectedDay if needed
+          if (newDays.length > 0) setSelectedDay(newDays[0].id);
+        }
+        break;
+      }
+
+      case 'add_new_destination': {
+        const matches = payload?.matches;
+        console.log("AI Matches for new destination:", matches);
+        setAIMatches(matches);
+        break;
+      }
+
+
+      case 'extend_map_view': {
+        setIsMapExpanded(true);
+        break;
+      }
+
+      case 'collapse_map_view': {
+        setIsMapExpanded(false);
+        break;
+      }
+
+      case 'find_route_of_pair_ith': {
+        const pairIndex = latestAIResult.pair_index;
+        setViewMode("route-guidance");
+        setRouteSegmentIndex(pairIndex);
+        break;
+      }
       default:
         console.warn("Unknown AI command:", command);
     }
@@ -873,6 +912,12 @@ export function CustomMode({
               const day = localTripData.days.find((d) => d.id === selectedDay);
               if (!day) return;
 
+              // Check for duplicate place_id
+              if (day.destinations.some(dest => dest.place_id === place.id)) {
+                toast.error(t("destinationAlreadyExists", lang));
+                return;
+              }
+
               updateDay(selectedDay, {
                 ...day,
                 destinations: [...day.destinations, place],
@@ -884,6 +929,8 @@ export function CustomMode({
             selectedDayId={selectedDay}
             currency={currency}
             onCurrencyToggle={onCurrencyToggle}
+            AIMatches={AIMatches}
+            onAIMatchesReset={() => setAIMatches(null)}
           />
         </div>
 

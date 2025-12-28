@@ -3,132 +3,184 @@
         {
             "name": "open_user_manual",
             "natural_expression": "open the user manual",
-            "description": "Open the user manual or help guide."
+            "description": "Open the user manual or help guide.",
+            "response_vi": "Đã mở hướng dẫn sử dụng",
+            "response_en": "User manual opened"
         },
         {
             "name": "change_language",
             "natural_expression": "change language",
-            "description": "Change the application's language."
+            "description": "Change the application's language.",
+            "response_vi": "Đã thay đổi ngôn ngữ",
+            "response_en": "Language changed"
         },
         {
             "name": "change_currency",
             "natural_expression": "change currency",
-            "description": "Switch the currency used for cost calculations."
+            "description": "Switch the currency used for cost calculations.",
+            "response_vi": "Đơn vị tiền tệ đã được cập nhật",
+            "response_en": "Currency changed"
         },
         {
             "name": "update_trip_name",
             "natural_expression": "update trip name",
-            "description": "Update the name of the current trip."
+            "description": "Update the name of the current trip.",
+            "response_vi": "Tên chuyến đi đã được cập nhật",
+            "response_en": "Trip name updated"
         },
         {
             "name": "update_members",
             "natural_expression": "update number of members",
-            "description": "Change the number of members in the trip."
+            "description": "Change the number of members in the trip.",
+            "response_vi": "Số thành viên đã được cập nhật",
+            "response_en": "Number of members updated"
         },
         {
             "name": "update_start_date",
             "natural_expression": "update start date",
-            "description": "Set or update the trip's start date."
+            "description": "Set or update the trip's start date.",
+            "response_vi": "Ngày bắt đầu đã được cập nhật",
+            "response_en": "Start date updated"
         },
         {
             "name": "update_end_date",
             "natural_expression": "update end date",
-            "description": "Set or update the trip's end date."
+            "description": "Set or update the trip's end date.",
+            "response_vi": "Ngày kết thúc đã được cập nhật",
+            "response_en": "End date updated"
         },
         {
             "name": "add_new_day",
             "natural_expression": "add new day",
-            "description": "Add a new day to the trip itinerary."
+            "description": "Add a new day to the trip itinerary.",
+            "response_vi": "Đã thêm ngày mới vào hành trình",
+            "response_en": "New day added to itinerary"
         },
         {
             "name": "swap_day",
             "natural_expression": "swap days",
-            "description": "Swap the order of two days in the itinerary."
+            "description": "Swap the order of two days in the itinerary.",
+            "response_vi": "Đã hoán đổi thứ tự các ngày trong hành trình",
+            "response_en": "Days swapped in itinerary"
         },
         {
             "name": "add_new_day_after_current",
             "natural_expression": "add new day after current",
-            "description": "Add a new day after the current day in the itinerary."
+            "description": "Add a new day after the current day in the itinerary.",
+            "response_vi": "Đã thêm ngày mới sau ngày hiện tại",
+            "response_en": "New day added after current day"
         },
         {
             "name": "add_new_day_after_ith",
             "natural_expression": "add new day after specific day",
-            "description": "Add a new day after the specified day in the itinerary."
+            "description": "Add a new day after the specified day in the itinerary.",
+            "response_vi": "Đã thêm ngày mới sau ngày được chọn",
+            "response_en": "New day added after specified day"
         },
         {
             "name": "view_all_days",
             "natural_expression": "view all days",
-            "description": "View an overview of all days in the trip."
+            "description": "View an overview of all days in the trip.",
+            "response_vi": "Hiển thị tổng quan tất cả các ngày trong chuyến đi",
+            "response_en": "Overview of all days displayed"
         },
         {
             "name": "delete_current_day",
             "natural_expression": "delete current day",
-            "description": "Delete the currently selected day from the itinerary."
+            "description": "Delete the currently selected day from the itinerary.",
+            "response_vi": "Đã xóa ngày hiện tại khỏi hành trình",
+            "response_en": "Current day deleted from itinerary"
         },
         {
             "name": "delete_all_days",
             "natural_expression": "delete all days",
-            "description": "Remove all days from the itinerary."
+            "description": "Remove all days from the itinerary.",
+            "response_vi": "Đã xóa tất cả các ngày khỏi hành trình",
+            "response_en": "All days deleted from itinerary"
         },
         {
             "name": "delete_range_of_days",
             "natural_expression": "delete range of days",
-            "description": "Delete a specified range of days from the itinerary."
+            "description": "Delete a specified range of days from the itinerary.",
+            "response_vi": "Đã xóa khoảng ngày được chọn khỏi hành trình",
+            "response_en": "Selected range of days deleted from itinerary"
         },
         {
             "name": "optimize-route",
             "natural_expression": "find optimal route",
-            "description": "Find the most efficient route for the trip."
+            "description": "Find the most efficient route for the trip.",
+            "response_vi": "Đã tìm tuyến đường tối ưu cho chuyến đi",
+            "response_en": "Optimal route found for the trip"
         },
         {
             "name": "add_new_destination",
             "natural_expression": "add new destination",
-            "description": "Add a new destination to the itinerary."
+            "description": "Add a new destination to the itinerary.",
+            "response_vi": "Đã thêm điểm đến mới vào hành trình",
+            "response_en": "New destination added to itinerary"
         },
         {
             "name": "route-list",
             "natural_expression": "show route list",
-            "description": "Display the list of route segments for the trip."
+            "description": "Display the list of route segments for the trip.",
+            "response_vi": "Hiển thị danh sách các chặng đường",
+            "response_en": "Route list displayed"
         },
         {
             "name": "map-view",
             "natural_expression": "show map view",
-            "description": "Show the map view of the trip's destinations and routes."
+            "description": "Show the map view of the trip's destinations and routes.",
+            "response_vi": "Hiển thị bản đồ chuyến đi",
+            "response_en": "Map view displayed"
         },
         {
             "name": "extend_map_view",
             "natural_expression": "extend map view",
-            "description": "Expand or extend the map view for better visualization."
+            "description": "Expand or extend the map view for better visualization.",
+            "response_vi": "Đã mở rộng bản đồ",
+            "response_en": "Map view extended"
         },
         {
             "name": "collapse_map_view",
             "natural_expression": "collapse map view",
-            "description": "Collapse the map view to its original size."
+            "description": "Collapse the map view to its original size.",
+            "response_vi": "Đã thu nhỏ bản đồ",
+            "response_en": "Map view collapsed"
         },
         {
             "name": "find_route_of_pair_ith",
             "natural_expression": "find route between two destinations",
-            "description": "Find the route between a specific pair of destinations."
+            "description": "Find the route between a specific pair of destinations.",
+            "response_vi": "Đã tìm tuyến đường giữa hai điểm đến",
+            "response_en": "Route between two destinations found"
         },
         {
             "name": "show_saved_plan",
             "natural_expression": "show saved plans",
-            "description": "Display the list of saved trip plans."
+            "description": "Display the list of saved trip plans.",
+            "response_vi": "Hiển thị danh sách các kế hoạch đã lưu",
+            "response_en": "Saved plans displayed"
         },
         {
             "name": "delete_all_saved_plans",
             "natural_expression": "delete all saved plans",
-            "description": "Delete all saved trip plans."
+            "description": "Delete all saved trip plans.",
+            "response_vi": "Đã xóa tất cả các kế hoạch đã lưu",
+            "response_en": "All saved plans deleted"
         },
         {
             "name": "delete_saved_plan_ith",
             "natural_expression": "delete specific saved plan",
-            "description": "Delete a specific saved trip plan."
+            "description": "Delete a specific saved trip plan.",
+            "response_vi": "Đã xóa kế hoạch đã lưu được chọn",
+            "response_en": "Selected saved plan deleted"
         },
         {
             "name": "create_itinerary",
             "natural_expression": "create itinerary",
-            "description": "Generate a detailed itinerary for the trip."
+            "description": "Generate a detailed itinerary for the trip.",
+            "response_vi": "Đã tạo lịch trình chi tiết cho chuyến đi",
+            "response_en": "Detailed itinerary created"
         }
     ]
 }
