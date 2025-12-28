@@ -1571,6 +1571,22 @@ Bạn có thể đề cập một số chi tiết dưới đây để giúp chú
     en: "Error removing destination. Please try again.",
     vi: "Lỗi khi xóa điểm đến. Vui lòng thử lại.",
   },
+  routeOptimizationFailed: {
+    en: "Route optimization failed. Please try again.",
+    vi: "Tối ưu hóa lộ trình thất bại. Vui lòng thử lại.",
+  },
+  authenticationNotFound: {
+    en: "Authentication not found. Please log in again.",
+    vi: "Không tìm thấy xác thực. Vui lòng đăng nhập lại.",
+  },
+  sessionExpired: {
+    en: "Session expired. Please login again.",
+    vi: "Phiên đã hết hạn. Vui lòng đăng nhập lại."
+  },
+  planSaveFailed: {
+    en: "Failed to save trip plan. Please try again.",
+    vi: "Lưu kế hoạch chuyến đi thất bại. Vui lòng thử lại."
+  },
 } as const;
 
 export type TranslationKey = keyof typeof TRANSLATIONS;

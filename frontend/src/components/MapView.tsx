@@ -25,10 +25,8 @@ interface MapViewProps {
   resetMapView?: boolean;
   language: 'EN' | 'VI';
   mode?: 'custom' | 'view';
-  onAddDestination: (name: string) => Promise<void>;
-  onRemoveDestination: (destinationId: string) => Promise<void>;
   focusedDestination?: Destination | null;
-  onOptimizeRoute?: () => Promise<void>;
+  onOptimizeRoute?: (destinations: Destination[]) => Promise<void>;
   isOptimizing?: boolean;
   onDestinationClick?: (destination: Destination) => void;
   AICommand?: string | null;
@@ -66,8 +64,6 @@ export function MapView({
   resetMapView,
   language,
   mode,
-  onAddDestination,
-  onRemoveDestination,
   focusedDestination,
   onOptimizeRoute,
   isOptimizing,
@@ -103,29 +99,7 @@ export function MapView({
   >(null);
 
   const mapRef = useRef<any>(null);
-  const onDestinationInputChange = async (value: string) => {
-    setNewDestinationName(value);
-    setSelectedPlaceId(null);
-    if (value.trim()) {
-      const results = await handleSearch(value);
-      setSearchResults(results);
-    } else {
-      setSearchResults([]);
-    }
-  };
-  const addDestination = async () => {
-    if (!selectedPlaceId || !newDestinationName) return;
-    setIsAdding(true);
-    try {
-      // Call your add destination logic here
-      await onAddDestination(newDestinationName);
-      setNewDestinationName('');
-      setSelectedPlaceId(null);
-      setSearchResults([]);
-    } finally {
-      setIsAdding(false);
-    }
-  };
+
   // Determine destinations to display based on view mode
   const getDestinations = () => {
     if (viewMode === "single") {
@@ -253,32 +227,6 @@ export function MapView({
     }
   }, [focusedDestination]);
 
-  const handleAddDestination = async () => {
-    if (!previewDestination) return;
-
-    setIsAdding(true);
-    try {
-      await onAddDestination(previewDestination.name);
-      setPreviewDestination(null);
-      setSelectedDestination(null);
-    } catch (error) {
-      toast.error(t('errorAddingDestination', lang));
-    } finally {
-      setIsAdding(false);
-    }
-  };
-
-  const handleRemoveDestination = async (destinationId: string) => {
-    setIsAdding(true);
-    try {
-      await onRemoveDestination(destinationId);
-      setSelectedDestination(null);
-    } catch (error) {
-      toast.error(t('errorRemovingDestination', lang));
-    } finally {
-      setIsAdding(false);
-    }
-  };
   const routePairs =
     hasOptimizedRoute && currentDay
       ? currentDay.optimizedRoute.slice(0, -1).map((from, idx) => [
@@ -394,7 +342,11 @@ export function MapView({
           {/* Find Optimal Route Button - Only in View Mode and Map View - On Same Line */}
           {mode === 'view' && mapListView === 'map' && onOptimizeRoute && (
             <Button
-              onClick={onOptimizeRoute}
+              onClick={() => {
+                if (currentDay && currentDay.destinations.length > 0) {
+                  onOptimizeRoute(currentDay.destinations);
+                }
+              }}
               disabled={isOptimizing || (currentDay && currentDay.destinations.length < 2)}
               className="bg-[#70C573] hover:bg-[#5E885D] text-white shrink-0"
               data-tutorial="find-optimal-route"
@@ -901,116 +853,6 @@ export function MapView({
                               {language === 'EN' ? 'Website' : 'Trang web'}
                             </span>
                           </span>
-                        </Button>
-                      )}
-
-                      {/* Add to Day Plan button for preview destinations */}
-                      {selectedDestination.id.startsWith('preview-') && (
-                        <Button
-                          className="flex-1 text-white text-sm relative overflow-hidden group transition-all duration-200"
-                          onClick={handleAddDestination}
-                          disabled={isAdding}
-                          style={{
-                            background: isAdding
-                              ? 'linear-gradient(135deg, #6B7280 0%, #4B5563 100%)'
-                              : 'linear-gradient(135deg, #004DB6 0%, #003d8f 100%)',
-                            boxShadow: isAdding
-                              ? '0 4px 12px rgba(0,0,0,0.15)'
-                              : '0 6px 20px rgba(0,77,182,0.35)',
-                            transform: 'scale(1)',
-                            border: 'none',
-                          }}
-                          onMouseEnter={(e) => {
-                            if (!isAdding) {
-                              e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
-                              e.currentTarget.style.boxShadow = '0 10px 30px rgba(0,77,182,0.45)';
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            if (!isAdding) {
-                              e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                              e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,77,182,0.35)';
-                            }
-                          }}
-                          onMouseDown={(e) => {
-                            if (!isAdding) {
-                              e.currentTarget.style.transform = 'translateY(0) scale(0.97)';
-                              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,77,182,0.30)';
-                            }
-                          }}
-                          onMouseUp={(e) => {
-                            if (!isAdding) {
-                              e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
-                              e.currentTarget.style.boxShadow = '0 10px 30px rgba(0,77,182,0.45)';
-                            }
-                          }}
-                        >
-                          {/* Animated gradient overlay on hover */}
-                          <div
-                            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                            style={{
-                              background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 100%)',
-                              pointerEvents: 'none',
-                            }}
-                          />
-
-                          {/* Ripple effect background */}
-                          <div
-                            className="absolute inset-0 opacity-0 group-active:opacity-100 transition-opacity duration-150"
-                            style={{
-                              background: 'radial-gradient(circle, rgba(255,255,255,0.25) 0%, transparent 70%)',
-                              pointerEvents: 'none',
-                            }}
-                          />
-
-                          {/* Button content */}
-                          <span className="relative z-10 flex items-center justify-center">
-                            {isAdding ? (
-                              <>
-                                <Loader2
-                                  className="w-4 h-4 mr-1.5 animate-spin"
-                                  style={{
-                                    animation: 'spin 1s linear infinite',
-                                  }}
-                                />
-                                <span className="font-medium">
-                                  {language === 'EN' ? 'Adding...' : 'Đang thêm...'}
-                                </span>
-                              </>
-                            ) : (
-                              <>
-                                <Plus
-                                  className="w-4 h-4 mr-1.5 transition-transform duration-200 group-hover:rotate-90 group-hover:scale-110"
-                                />
-                                <span className="font-medium">
-                                  {language === 'EN'
-                                    ? `Add to Day ${currentDay?.dayNumber || 1}`
-                                    : `Thêm vào Ngày ${currentDay?.dayNumber || 1}`}
-                                </span>
-                              </>
-                            )}
-                          </span>
-                        </Button>
-                      )}
-
-                      {/* Remove Destination button for non-preview destinations */}
-                      {!selectedDestination.id.startsWith('preview-') && (
-                        <Button
-                          className="flex-1 bg-red-500 hover:bg-red-600 text-white text-sm"
-                          onClick={() => handleRemoveDestination(selectedDestination.id)}
-                          disabled={isAdding}
-                        >
-                          {isAdding ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                              {language === 'EN' ? 'Removing...' : 'Đang xóa...'}
-                            </>
-                          ) : (
-                            <>
-                              <Trash2 className="w-4 h-4 mr-1" />
-                              {language === 'EN' ? 'Remove' : 'Xóa'}
-                            </>
-                          )}
                         </Button>
                       )}
                     </div>
