@@ -227,6 +227,7 @@ function AppContent() {
           currentUser={currentUser}
           language={language}
           isMyPlansActive={showSavedPlans && isLoggedIn}
+          userAvatar={userProfile?.avatar}  // ← NEW LINE ADDED
         />
       )}
 
