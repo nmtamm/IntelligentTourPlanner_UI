@@ -1001,7 +1001,10 @@ export function CustomMode({
                 <Input
                   type="number"
                   value={members}
-                  onChange={(e) => setMembers(e.target.value)}
+                  onChange={(e) => {
+                    setMembers(e.target.value);
+                    setHasUnsavedChanges(true);
+                  }}
                   placeholder={t('numberOfMembers', lang)}
                   min="1"
                   className="flex-1 rounded-xl border-[#E2E8F0] bg-[#F8FAFC] placeholder:text-[#94A3B8] focus-visible:ring-[3px] focus-visible:ring-[rgba(59,130,246,0.20)] focus-visible:border-[#3B82F6] transition-all duration-200 hover:border-[#CBD5E1] hover:bg-white"

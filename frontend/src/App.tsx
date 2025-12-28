@@ -158,6 +158,7 @@ function AppContent() {
     });
     setCurrentPlanId(null);
     setShowSavedPlans(false);
+    setMode("custom");
   };
 
   const handleOpenUserManual = () => {

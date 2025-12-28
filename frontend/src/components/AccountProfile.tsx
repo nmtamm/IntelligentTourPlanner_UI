@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { t } from "../locales/translations";
 import { ErrorNotification } from "./ErrorNotification";
 import { updateProfile } from "../utils/profile";
+import { useTheme } from "../contexts/ThemeContext";
 import { fetchUserProfile, changePassword } from "../api";
 interface AccountProfileProps {
   isOpen: boolean;
@@ -54,6 +55,16 @@ export function AccountProfile({
   const [avatarUrl, setAvatarUrl] = useState(currentUser.avatar || "");
   const [isSaveBtnHovered, setIsSaveBtnHovered] = useState(false);
   const [isSaveBtnPressed, setIsSaveBtnPressed] = useState(false);
+  const [isCancelBtnHovered, setIsCancelBtnHovered] = useState(false);
+  const [isCancelBtnPressed, setIsCancelBtnPressed] = useState(false);
+  const [isLogoutBtnHovered, setIsLogoutBtnHovered] = useState(false);
+  const [isLogoutBtnPressed, setIsLogoutBtnPressed] = useState(false);
+  const [isCloseBtnHovered, setIsCloseBtnHovered] = useState(false);
+  const [isCloseBtnPressed, setIsCloseBtnPressed] = useState(false);
+  const [isChangePasswordBtnHovered, setIsChangePasswordBtnHovered] = useState(false);
+  const [isUploadLabelHovered, setIsUploadLabelHovered] = useState(false);
+  const { currentTheme } = useTheme();
+  const colors = currentTheme.colors;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -161,10 +172,10 @@ export function AccountProfile({
     >
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle style={{ color: '#2B7BA8' }}>
+          <DialogTitle style={{ color: colors.primary }}>
             {t('accountProfile', lang)}
           </DialogTitle>
-          <DialogDescription style={{ color: '#5B9BD5' }}>
+          <DialogDescription style={{ color: colors.text.secondary }}>
             {t('accountProfileDescription', lang)}
           </DialogDescription>
         </DialogHeader>
@@ -178,22 +189,22 @@ export function AccountProfile({
                   src={currentUser.avatar}
                   alt="Avatar"
                   className="w-24 h-24 rounded-full object-cover border-4"
-                  style={{ borderColor: '#FFB347' }}
+                  style={{ borderColor: colors.secondary }}
                 />
               ) : (
                 <div
                   className="w-24 h-24 rounded-full flex items-center justify-center text-white text-3xl font-bold border-4"
                   style={{
-                    background: 'linear-gradient(135deg, #2B7BA8 0%, #5B9BD5 100%)',
-                    borderColor: '#FFB347'
+                    background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.primary}CC 100%)`,
+                    borderColor: colors.secondary
                   }}
                 >
                   {getInitials(currentUser.username)}
                 </div>
               )}
-              <div
+              <div 
                 className="absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer shadow-lg"
-                style={{ background: '#FF8C69' }}
+                style={{ background: colors.accent }}
               >
                 <Camera className="w-4 h-4 text-white" />
               </div>
@@ -201,7 +212,7 @@ export function AccountProfile({
 
             {/* Avatar File Upload */}
             <div className="w-full space-y-2">
-              <Label htmlFor="avatar" style={{ color: '#FF8C69' }}>
+              <Label htmlFor="avatar" style={{ color: colors.accent }}>
                 {t('uploadAvatar', lang)}
               </Label>
               <div className="flex gap-2">
@@ -211,12 +222,14 @@ export function AccountProfile({
                   accept="image/*"
                   onChange={handleFileChange}
                   className="hidden"
-                  style={{ borderColor: '#FFD9CC' }}
+                  style={{ borderColor: colors.light }}
                 />
                 <label
                   htmlFor="avatar"
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md border cursor-pointer hover:bg-gray-50 transition-colors"
-                  style={{ borderColor: '#FFD9CC', color: '#2B7BA8' }}
+                  style={{ borderColor: colors.light, color: colors.primary }}
+                  onMouseEnter={() => setIsUploadLabelHovered(true)}
+                  onMouseLeave={() => setIsUploadLabelHovered(false)}
                 >
                   <Camera className="w-4 h-4" />
                   <span className="text-sm font-medium">
@@ -232,7 +245,7 @@ export function AccountProfile({
 
           {/* Username Display (Read-only) */}
           <div className="space-y-2">
-            <Label htmlFor="username" style={{ color: '#FF8C69' }}>
+            <Label htmlFor="username" style={{ color: colors.accent }}>
               {t('username', lang)}
             </Label>
             <div className="relative">
@@ -242,15 +255,15 @@ export function AccountProfile({
                 value={currentUser.username}
                 disabled
                 className="pr-12 bg-gray-50"
-                style={{ borderColor: '#FFD9CC' }}
+                style={{ borderColor: colors.light }}
               />
-              <User className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: '#FF8C69' }} />
+              <User className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: colors.accent }} />
             </div>
           </div>
 
           {/* Email Display (Read-only) */}
           <div className="space-y-2">
-            <Label htmlFor="email" style={{ color: '#FF8C69' }}>
+            <Label htmlFor="email" style={{ color: colors.accent }}>
               {t('email', lang)}
             </Label>
             <div className="relative">
@@ -260,11 +273,12 @@ export function AccountProfile({
                 value={currentUser.email}
                 disabled
                 className="pr-12 bg-gray-50"
-                style={{ borderColor: '#FFD9CC' }}
+                style={{ borderColor: colors.light }}
               />
-              <Mail className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: '#FF8C69' }} />
+              <Mail className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: colors.accent }} />
             </div>
           </div>
+
 
           {/* Password Section */}
           {!isEditingPassword ? (
@@ -272,7 +286,9 @@ export function AccountProfile({
               <button
                 onClick={() => setIsEditingPassword(true)}
                 className="text-sm font-medium hover:underline"
-                style={{ color: '#2B7BA8' }}
+                style={{ color: colors.primary }}
+                onMouseEnter={() => setIsChangePasswordBtnHovered(true)}
+                onMouseLeave={() => setIsChangePasswordBtnHovered(false)}
               >
                 {t('changePassword', lang)}
               </button>
@@ -288,24 +304,28 @@ export function AccountProfile({
               <div className="space-y-3 p-4 rounded-lg bg-gray-50">
                 {/* Current Password */}
                 <div className="space-y-2">
-                  <Label htmlFor="currentPassword" style={{ color: '#FF8C69' }}>
+                  <Label style={{ color: colors.accent }}>
+                    {t('password', lang)}
+                  </Label>
+
+                  <Label htmlFor="currentPassword" style={{ color: colors.accent }}>
                     {t('currentPassword', lang)}
                   </Label>
-                  <div className="relative">
-                    <Input
-                      id="currentPassword"
-                      type={showCurrentPassword ? "text" : "password"}
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      className="pr-12"
-                      style={{ borderColor: '#FFD9CC' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2"
-                      style={{ color: '#FF8C69' }}
-                    >
+                  <Input
+                    id="currentPassword"
+                    type={showCurrentPassword ? "text" : "password"}
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="pr-12"
+                    style={{ borderColor: colors.light }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2"
+                    style={{ color: colors.accent }}
+                  >
+
                       {showCurrentPassword ? (
                         <EyeOff className="w-5 h-5" />
                       ) : (
@@ -386,6 +406,20 @@ export function AccountProfile({
                       setError(null);
                     }}
                     className="flex-1"
+                    onMouseEnter={() => setIsCancelBtnHovered(true)}
+                    onMouseLeave={() => setIsCancelBtnHovered(false)}
+                    onMouseDown={() => setIsCancelBtnPressed(true)}
+                    onMouseUp={() => setIsCancelBtnPressed(false)}
+                    style={{
+                      borderColor: colors.accent,
+                      color: colors.accent,
+                      padding: '0 16px',
+                      boxShadow: isCancelBtnPressed 
+                        ? `0 2px 6px ${colors.accent}66` 
+                        : (isCancelBtnHovered ? `0 4px 12px ${colors.accent}4D` : 'none'),
+                      transform: isCancelBtnPressed ? 'scale(0.97)' : (isCancelBtnHovered ? 'scale(1.02)' : 'scale(1.00)'),
+                      transition: isCancelBtnPressed ? 'all 120ms ease-out' : 'all 150ms cubic-bezier(0.16,1,0.3,1)',
+                    }}
                   >
                     {t('cancel', lang)}
                   </Button>
@@ -400,20 +434,20 @@ export function AccountProfile({
                     onMouseUp={() => setIsSaveBtnPressed(false)}
                     className="flex-1 text-white font-semibold rounded-md h-9"
                     style={{
-                      background: 'linear-gradient(135deg, #2B7BA8 0%, #5B9BD5 100%)',
+                      background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.primary}CC 100%)`,
                       padding: '0 16px',
-                      boxShadow: isSaveBtnPressed
-                        ? '0 2px 6px rgba(43, 123, 168, 0.4)'
-                        : (isSaveBtnHovered ? '0 4px 12px rgba(43, 123, 168, 0.3)' : 'none'),
+                      boxShadow: isSaveBtnPressed 
+                        ? `0 2px 6px ${colors.primary}66` 
+                        : (isSaveBtnHovered ? `0 4px 12px ${colors.primary}4D` : 'none'),
                       transform: isSaveBtnPressed ? 'scale(0.97)' : (isSaveBtnHovered ? 'scale(1.02)' : 'scale(1.00)'),
                       transition: isSaveBtnPressed ? 'all 120ms ease-out' : 'all 150ms cubic-bezier(0.16,1,0.3,1)',
                     }}
                   >
+
                     {t('save', lang)}
                   </button>
                 </div>
               </div>
-            </div>
           )}
 
           {/* Action Buttons */}
@@ -422,18 +456,43 @@ export function AccountProfile({
               onClick={onLogout}
               variant="outline"
               className="flex-1 flex items-center gap-2"
-              style={{ borderColor: '#FF6B6B', color: '#FF6B6B' }}
+              onMouseEnter={() => setIsLogoutBtnHovered(true)}
+              onMouseLeave={() => setIsLogoutBtnHovered(false)}
+              onMouseDown={() => setIsLogoutBtnPressed(true)}
+              onMouseUp={() => setIsLogoutBtnPressed(false)}
+              style={{
+                borderColor: colors.highlight,
+                color: colors.highlight,
+                padding: '0 16px',
+                boxShadow: isLogoutBtnPressed 
+                  ? `0 2px 6px ${colors.highlight}66` 
+                  : (isLogoutBtnHovered ? `0 4px 12px ${colors.highlight}4D` : 'none'),
+                transform: isLogoutBtnPressed ? 'scale(0.97)' : (isLogoutBtnHovered ? 'scale(1.02)' : 'scale(1.00)'),
+                transition: isLogoutBtnPressed ? 'all 120ms ease-out' : 'all 150ms cubic-bezier(0.16,1,0.3,1)',
+              }}
             >
+
               <LogOut className="w-4 h-4" />
               {t('logout', lang)}
             </Button>
             <Button
               onClick={onClose}
               className="flex-1 text-white"
+              onMouseEnter={() => setIsCloseBtnHovered(true)}
+              onMouseLeave={() => setIsCloseBtnHovered(false)}
+              onMouseDown={() => setIsCloseBtnPressed(true)}
+              onMouseUp={() => setIsCloseBtnPressed(false)}
               style={{
-                background: 'linear-gradient(135deg, #FF8C69 0%, #FFB347 100%)'
+                background: `linear-gradient(135deg, ${colors.accent} 0%, ${colors.secondary} 100%)`,
+                padding: '0 16px',
+                boxShadow: isCloseBtnPressed 
+                  ? `0 2px 6px ${colors.accent}66` 
+                  : (isCloseBtnHovered ? `0 4px 12px ${colors.accent}4D` : 'none'),
+                transform: isCloseBtnPressed ? 'scale(0.97)' : (isCloseBtnHovered ? 'scale(1.02)' : 'scale(1.00)'),
+                transition: isCloseBtnPressed ? 'all 120ms ease-out' : 'all 150ms cubic-bezier(0.16,1,0.3,1)',
               }}
             >
+
               {t('close', lang)}
             </Button>
           </div>

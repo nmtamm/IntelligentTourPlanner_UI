@@ -347,23 +347,68 @@ function DraggableDestinationCard({
                 : "4.5"}
             </span>
             <div className="flex items-center gap-0.5">
-              {[1, 2, 3, 4, 5].map((star) => {
+              {Array.from({ length: 5 }, (_, index) => {
+                const starPosition = index + 1; // 1-based star position (1, 2, 3, 4, 5)
                 const rating = detailedDestination?.rating !== undefined && detailedDestination?.rating !== null
                   ? detailedDestination.rating
                   : 4.5;
-                const isFilled =
-                  star <= Math.floor(rating) ||
-                  (star === Math.ceil(rating) && rating % 1 !== 0);
+                
+                // Calculate fill percentage for this star (0-100)
+                const fillPercent = Math.max(0, Math.min(100, (rating - index) * 100));
+                
+                // Determine star state
+                const isFilled = fillPercent === 100;
+                const isEmpty = fillPercent === 0;
+                const isPartial = fillPercent > 0 && fillPercent < 100;
+
                 return (
-                  <Star
-                    key={star}
-                    className={`w-4 h-4 transition-all duration-140 ${isFilled ? "fill-[#FACC15] text-[#FACC15]" : "fill-gray-300 text-gray-300"}`}
-                    style={{
-                      borderRadius: '2px',
-                      transform: isHovered ? 'scale(1.05)' : 'scale(1)',
-                      filter: isHovered && isFilled ? 'drop-shadow(0 0 6px rgba(250,204,21,0.65))' : 'none',
-                    }}
-                  />
+                  <div key={starPosition} className="relative w-4 h-4">
+                    {isPartial ? (
+                      /* Partial Star: Overlay technique for precise decimal fill */
+                      <>
+                        {/* Base: Empty gray star */}
+                        <Star
+                          className="w-4 h-4 absolute inset-0 transition-all duration-150"
+                          fill="#E5E7EB"
+                          stroke="#E5E7EB"
+                          strokeWidth={1.5}
+                          style={{ 
+                            transform: isHovered ? 'scale(1.08)' : 'scale(1)',
+                          }}
+                        />
+                        {/* Overlay: Yellow star clipped to exact percentage */}
+                        <div 
+                          className="absolute inset-0 overflow-hidden transition-all duration-150"
+                          style={{
+                            width: `${fillPercent}%`,
+                          }}
+                        >
+                          <Star
+                            className="w-4 h-4 absolute left-0 top-0"
+                            fill="#FACC15"
+                            stroke="#FACC15"
+                            strokeWidth={1.5}
+                            style={{ 
+                              transform: isHovered ? 'scale(1.08)' : 'scale(1)',
+                              filter: isHovered ? 'drop-shadow(0 0 4px rgba(250,204,21,0.5))' : 'none',
+                            }}
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      /* Full or Empty Star: Simple single icon */
+                      <Star
+                        className="w-4 h-4 transition-all duration-150"
+                        fill={isFilled ? "#FACC15" : "#E5E7EB"}
+                        stroke={isFilled ? "#FACC15" : "#E5E7EB"}
+                        strokeWidth={1.5}
+                        style={{ 
+                          transform: isHovered ? 'scale(1.08)' : 'scale(1)',
+                          filter: isHovered && isFilled ? 'drop-shadow(0 0 4px rgba(250,204,21,0.5))' : 'none',
+                        }}
+                      />
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -551,8 +596,8 @@ function DayViewContent({
                   {/* Subtitle */}
                   <p className="text-[#9CA3AF] text-[13px]">
                     {lang === 'en'
-                      ? 'Search for a place or click on the map to add your first stop.'
-                      : 'Tìm kiếm địa điểm hoặc nhấp vào bản đồ để thêm điểm dừng đầu tiên.'}
+                      ? 'Search for a place to add your first stop.'
+                      : 'Tìm kiếm địa điểm để thêm điểm dừng đầu tiên.'}
                   </p>
                 </div>
               </div>
