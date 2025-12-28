@@ -187,3 +187,62 @@ async def get_unique_top_types_per_city_json(db=Depends(get_db)):
     )
 
     return all_items
+
+
+@router.get("/api/places/nearby")
+def find_places_nearby(latitude, longitude, type, radius_m=1000, db=Depends(get_db)):
+    sql = text(
+        """
+    SELECT *,
+        (
+            6371000 * acos(
+                cos(radians(:lat)) * cos(radians(json_extract(gps_coordinates, '$.latitude')))
+                * cos(radians(json_extract(gps_coordinates, '$.longitude')) - radians(:lng))
+                + sin(radians(:lat)) * sin(radians(json_extract(gps_coordinates, '$.latitude')))
+            )
+        ) AS distance
+    FROM places
+    WHERE EXISTS (
+        SELECT 1 FROM json_each(places.type_ids)
+        WHERE json_each.value = :type
+    )
+    AND (
+        6371000 * acos(
+            cos(radians(:lat)) * cos(radians(json_extract(gps_coordinates, '$.latitude')))
+            * cos(radians(json_extract(gps_coordinates, '$.longitude')) - radians(:lng))
+            + sin(radians(:lat)) * sin(radians(json_extract(gps_coordinates, '$.latitude')))
+        )
+    ) < :radius
+    ORDER BY distance ASC, POI_score DESC
+    LIMIT 20
+    """
+    )
+    results = db.execute(
+        sql, {"lat": latitude, "lng": longitude, "type": type, "radius": radius_m}
+    ).fetchall()
+    columns = [col.name for col in Place.__table__.columns]
+    types = {col.name: col.type for col in Place.__table__.columns}
+
+    places_json = []
+    for row in results:
+        place = {}
+        for idx, col in enumerate(columns):
+            value = row[idx]
+            col_type = types[col]
+            # Handle JSON columns
+            if isinstance(col_type, JSON):
+                try:
+                    value = json.loads(value) if value is not None else None
+                except Exception:
+                    pass
+            # Handle Float
+            elif isinstance(col_type, Float):
+                value = float(value) if value is not None else None
+            # Handle Integer
+            elif isinstance(col_type, Integer):
+                value = int(value) if value is not None else None
+            # Otherwise, leave as is (String, etc.)
+            place[col] = value
+        places_json.append(place)
+
+    return {"status": "success", "count": len(places_json), "places": places_json}

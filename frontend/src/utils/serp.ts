@@ -105,7 +105,12 @@ export async function generatePlaces(result, userLocation) {
     if (allPlaces.length > totalPlaces) {
         allPlaces = allPlaces.slice(0, totalPlaces);
     }
-    return allPlaces;
+    return {
+        allPlaces: allPlaces,
+        city: result.starting_point,
+        latitude,
+        longitude
+    };
 }
 
 export async function fetchPlacesData() {
@@ -211,4 +216,22 @@ export function mapPlaceToDestination(place: any, currency: 'USD' | 'VND', onCur
         longitude: place.gps_coordinates?.longitude,
         // ...add other fields as needed
     };
+}
+
+export async function fetchNearbyPlaces(type: string, latitude: number, longitude: number, radius_m: number = 1000) {
+    const response = await fetch(
+        `${API_HOST}/api/places/nearby?type=${encodeURIComponent(type)}&latitude=${latitude}&longitude=${longitude}&radius_m=${radius_m}`,
+        {
+            method: "GET",
+            headers: {
+                "Accept": "application/json"
+            }
+        }
+    );
+    if (!response.ok) {
+        console.error("API error:", response.status, await response.text());
+        return [];
+    }
+    const data = await response.json();
+    return data.places || [];
 }

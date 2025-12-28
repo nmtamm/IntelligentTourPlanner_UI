@@ -6,6 +6,7 @@ import { Textarea } from './ui/textarea';
 import { detectAndExecuteGroqCommand } from '../utils/groq';
 import { set } from 'date-fns';
 import { detectLanguage } from '../utils/gtranslate';
+import { DayPlan } from '../types';
 interface Message {
   id: string;
   type: 'user' | 'ai';
@@ -18,9 +19,12 @@ interface ChatBoxProps {
   AICommand?: string | null;
   onAIActionComplete?: () => void;
   onAICommand?: (command: string, payload?: any) => void;
+  city?: string;
+  cityCoordinates?: { latitude: number; longitude: number };
+  plan: { name: string; days: DayPlan[], city?: string; cityCoordinates?: { latitude: number; longitude: number } };
 }
 
-export function ChatBox({ language, AICommand, onAIActionComplete, onAICommand }: ChatBoxProps) {
+export function ChatBox({ language, AICommand, onAIActionComplete, onAICommand, city, cityCoordinates, plan }: ChatBoxProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -64,7 +68,7 @@ export function ChatBox({ language, AICommand, onAIActionComplete, onAICommand }
       const detectedLang = await detectLanguage(input);
 
       // Call GROQ command detection and execution
-      const result = await detectAndExecuteGroqCommand(input);
+      const result = await detectAndExecuteGroqCommand(plan, input);
 
       // Send the result back to parent component
       if (onAICommand && result.command) {

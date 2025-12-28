@@ -5,7 +5,7 @@ import { Destination } from "../types";
 import { t } from "../locales/translations";
 import { useThemeColors } from "../hooks/useThemeColors";
 import { PlaceDetailsModal } from "./PlaceDetailsModal";
-import { handleSearch, getPlaceById } from "../utils/serp";
+import { handleSearch, getPlaceById, fetchFilteredPlaces, fetchNearbyPlaces } from "../utils/serp";
 import { fetchUniqueTopTypes } from "../utils/serp";
 import { detectCurrencyAndNormalizePrice } from "../utils/parseAmount";
 import { mapPlaceToDestination } from "../utils/serp";
@@ -17,6 +17,9 @@ interface PlaceSearchViewProps {
   onCurrencyToggle: () => void;
   AIMatches: Destination[] | null;
   onAIMatchesReset?: () => void,
+  userLocation?: { latitude: number; longitude: number } | null;
+  city?: string;
+  cityCoordinates?: { latitude: number; longitude: number };
 }
 export function PlaceSearchView({
   onAddDestination,
@@ -26,6 +29,9 @@ export function PlaceSearchView({
   onCurrencyToggle,
   AIMatches,
   onAIMatchesReset,
+  userLocation,
+  city,
+  cityCoordinates
 }: PlaceSearchViewProps) {
   const lang = language.toLowerCase() as "en" | "vi";
   const { primary, secondary, light } = useThemeColors();
@@ -125,6 +131,28 @@ export function PlaceSearchView({
       img.src = src;
     });
   }, [resultsToShow]);
+  useEffect(() => {
+    // Prefer cityCoordinates if available, else userLocation
+    const coords =
+      cityCoordinates && cityCoordinates.latitude !== undefined && cityCoordinates.longitude !== undefined
+        ? cityCoordinates
+        : userLocation;
+
+    if (selectedFilter !== "All") {
+      if (coords?.latitude !== undefined && coords?.longitude !== undefined) {
+        (async () => {
+          const filteredPlaces = await fetchNearbyPlaces(
+            selectedFilter,
+            coords.latitude,
+            coords.longitude
+          );
+          setSearchResults(filteredPlaces.slice(0, 20));
+        })();
+      }
+    } else {
+      // Show all places
+    }
+  }, [selectedFilter, cityCoordinates, userLocation]);
   return (
     <>
       <Card
@@ -210,6 +238,7 @@ export function PlaceSearchView({
                   <div key={filter.id} id={`filter-chip-${filter.id}`}>
                     <button
                       onClick={() => {
+                        if (onAIMatchesReset) onAIMatchesReset();
                         setSelectedFilter(filter.id);
 
                         setTimeout(() => {

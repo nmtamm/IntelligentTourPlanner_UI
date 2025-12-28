@@ -7,6 +7,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from groq import Groq
+from ..place_models import Place
+from sqlalchemy.types import JSON, Float, Integer
 
 # categories_path = os.path.join(os.path.dirname(__file__), "..", "categories.json")
 # with open(categories_path, "r", encoding="utf-8") as f:
@@ -180,7 +182,9 @@ def load_commands():
         return json.load(f)["commands"]
 
 
-def detect_and_execute_command(client: Groq, user_prompt: str, db: Session) -> dict:
+def detect_and_execute_command(
+    client: Groq, user_prompt: str, plan: dict, db: Session
+) -> dict:
     commands = load_commands()
     # Prepare a list of natural expressions and descriptions for the prompt
     command_expressions = [f'{cmd["natural_expression"]}' for cmd in commands]
@@ -206,7 +210,6 @@ GUIDELINES:
 
 Return your answer as a JSON object: {{"natural_expression": "<expression>"}}
 """
-
     response = client.chat.completions.create(
         model="meta-llama/llama-4-scout-17b-16e-instruct",
         messages=[
@@ -221,6 +224,7 @@ Return your answer as a JSON object: {{"natural_expression": "<expression>"}}
 
     try:
         result = json.loads(response.choices[0].message.content)
+        print("Detected command result:", result)
         natural_expression = result.get("natural_expression", "unknown")
     except Exception:
         return {"error": "Could not parse command from LLM response."}
@@ -231,9 +235,22 @@ Return your answer as a JSON object: {{"natural_expression": "<expression>"}}
 
     response_en = command_info.get("response_en", "")
     response_vi = command_info.get("response_vi", "")
+    error_response_en = command_info.get(
+        "error_response_en", "An error occurred. Please try again."
+    )
+    error_response_vi = command_info.get(
+        "error_response_vi", "Đã xảy ra lỗi. Vui lòng thử lại."
+    )
 
     if command == "create_itinerary":
         categories = list_tourist_recommendations(client, user_prompt, db)
+        if isinstance(categories, dict) and "error" in categories:
+            return {
+                "command": command,
+                "error": categories["error"],
+                "response_en": error_response_en,
+                "response_vi": error_response_vi,
+            }
         return {
             "command": "create_itinerary",
             "itinerary": categories,
@@ -242,6 +259,13 @@ Return your answer as a JSON object: {{"natural_expression": "<expression>"}}
         }
     elif command == "update_trip_name":
         info = extract_trip_info(client, user_prompt)
+        if "error" in info:
+            return {
+                "command": command,
+                "error": info["error"],
+                "response_en": error_response_en,
+                "response_vi": error_response_vi,
+            }
         return {
             "command": command,
             "trip_name": info.get("trip_name", ""),
@@ -250,6 +274,13 @@ Return your answer as a JSON object: {{"natural_expression": "<expression>"}}
         }
     elif command == "update_members":
         info = extract_trip_info(client, user_prompt)
+        if "error" in info:
+            return {
+                "command": command,
+                "error": info["error"],
+                "response_en": error_response_en,
+                "response_vi": error_response_vi,
+            }
         return {
             "command": command,
             "members": info.get("members", 0),
@@ -258,6 +289,13 @@ Return your answer as a JSON object: {{"natural_expression": "<expression>"}}
         }
     elif command == "update_start_date":
         info = extract_trip_info(client, user_prompt)
+        if "error" in info:
+            return {
+                "command": command,
+                "error": info["error"],
+                "response_en": error_response_en,
+                "response_vi": error_response_vi,
+            }
         return {
             "command": command,
             "start_day": info.get("start_day", ""),
@@ -266,6 +304,13 @@ Return your answer as a JSON object: {{"natural_expression": "<expression>"}}
         }
     elif command == "update_end_date":
         info = extract_trip_info(client, user_prompt)
+        if "error" in info:
+            return {
+                "command": command,
+                "error": info["error"],
+                "response_en": error_response_en,
+                "response_vi": error_response_vi,
+            }
         return {
             "command": command,
             "end_day": info.get("end_day", ""),
@@ -274,6 +319,13 @@ Return your answer as a JSON object: {{"natural_expression": "<expression>"}}
         }
     elif command == "swap_day":
         info = swap_day(client, user_prompt)
+        if "error" in info:
+            return {
+                "command": command,
+                "error": info["error"],
+                "response_en": error_response_en,
+                "response_vi": error_response_vi,
+            }
         return {
             "command": command,
             "day1": info.get("day1", 0),
@@ -284,6 +336,13 @@ Return your answer as a JSON object: {{"natural_expression": "<expression>"}}
     elif command == "add_new_day_after_ith":
         print("Executing add_day_after_ith_day command")
         info = add_new_day_after_ith_day(client, user_prompt)
+        if "error" in info:
+            return {
+                "command": command,
+                "error": info["error"],
+                "response_en": error_response_en,
+                "response_vi": error_response_vi,
+            }
         return {
             "command": command,
             "day": info.get("day", 0),
@@ -292,6 +351,13 @@ Return your answer as a JSON object: {{"natural_expression": "<expression>"}}
         }
     elif command == "delete_range_of_days":
         info = delete_day_range(client, user_prompt)
+        if "error" in info:
+            return {
+                "command": command,
+                "error": info["error"],
+                "response_en": error_response_en,
+                "response_vi": error_response_vi,
+            }
         return {
             "command": command,
             "start_day": info.get("start_day", 0),
@@ -299,8 +365,8 @@ Return your answer as a JSON object: {{"natural_expression": "<expression>"}}
             "response_en": response_en,
             "response_vi": response_vi,
         }
-    elif command == "add_new_destination":
-        info = add_new_destination(client, user_prompt, db)
+    elif command == "search_new_destination":
+        info = search_new_destination(client, user_prompt, db)
         return {
             "command": command,
             "destination": info.get("destination", ""),
@@ -310,6 +376,13 @@ Return your answer as a JSON object: {{"natural_expression": "<expression>"}}
         }
     elif command == "delete_saved_plan_ith":
         info = delete_saved_plan_ith(client, user_prompt)
+        if "error" in info:
+            return {
+                "command": command,
+                "error": info["error"],
+                "response_en": error_response_en,
+                "response_vi": error_response_vi,
+            }
         return {
             "command": command,
             "plan_index": info.get("plan_index", 0),
@@ -318,9 +391,54 @@ Return your answer as a JSON object: {{"natural_expression": "<expression>"}}
         }
     elif command == "find_route_of_pair_ith":
         info = find_route_of_pair_ith(client, user_prompt)
+        if "error" in info:
+            return {
+                "command": command,
+                "error": info["error"],
+                "response_en": error_response_en,
+                "response_vi": error_response_vi,
+            }
         return {
             "command": command,
             "pair_index": info.get("pair_index", 0),
+            "response_en": response_en,
+            "response_vi": response_vi,
+        }
+    elif command == "add_new_destination":
+        info = add_new_destination(client, user_prompt, plan, db)
+        if info.get("error") == 201:
+            return {
+                "command": command,
+                "response_en": "There is a conflict with existing destinations. If you want to add anyway, please write Confirm before add new destination. Else abort. If you want to delete the current plan, please write Delete current plan.",
+                "response_vi": "Có sự xung đột với các điểm đến hiện có. Nếu bạn vẫn muốn thêm, vui lòng viết Xác nhận trước khi thêm điểm mới. Hoặc hủy bỏ. Nếu bạn muốn xóa kế hoạch hiện tại, vui lòng viết Xóa kế hoạch hiện tại.",
+            }
+        elif "error" in info:
+            return {
+                "command": command,
+                "error": info["error"],
+                "response_en": error_response_en,
+                "response_vi": error_response_vi,
+            }
+        return {
+            "command": command,
+            "destination": info.get("destination", {}),
+            "day": info.get("day", 0),
+            "response_en": response_en,
+            "response_vi": response_vi,
+        }
+    elif command == "confirm_add_new_destination":
+        info = add_conflict_destination(client, user_prompt, plan, db)
+        if "error" in info:
+            return {
+                "command": command,
+                "error": info["error"],
+                "response_en": error_response_en,
+                "response_vi": error_response_vi,
+            }
+        return {
+            "command": command,
+            "destination": info.get("destination", {}),
+            "day": info.get("day", 0),
             "response_en": response_en,
             "response_vi": response_vi,
         }
@@ -331,7 +449,11 @@ Return your answer as a JSON object: {{"natural_expression": "<expression>"}}
             "response_vi": response_vi,
         }
     else:
-        return {"error": "No matching command found."}
+        return {
+            "error": "No matching command found.",
+            "response_en": "No matching command found.",
+            "response_vi": "Không tìm thấy lệnh phù hợp.",
+        }
 
 
 def extract_trip_info(client: Groq, user_prompt: str) -> dict:
@@ -423,7 +545,7 @@ Instruction: {user_prompt}
         return {}
 
 
-def add_new_destination(client: Groq, user_prompt: str, db: Session) -> dict:
+def search_new_destination(client: Groq, user_prompt: str, db: Session) -> dict:
     prompt = f"""
 From the following instruction, extract the destination to be added to the itinerary.
 Return as JSON: {{"destination": "..."}}.
@@ -508,3 +630,314 @@ Instruction: {user_prompt}
         return json.loads(response.choices[0].message.content)
     except Exception:
         return {}
+
+
+# def add_new_destination(
+#     client: Groq, user_prompt: str, plan: dict, db: Session
+# ) -> dict:
+#     # Step 1: Extract destination name and day number from user prompt
+#     print("Adding new destination with prompt:", user_prompt)
+#     prompt = f"""
+# From the following instruction, extract the destination to be added and the day which it want to add the destination in the itinerary.
+# Return as JSON: {{"destination": "...", "day": ...}}.
+
+# Instruction: {user_prompt}
+# """
+#     response = client.chat.completions.create(
+#         model="meta-llama/llama-4-maverick-17b-128e-instruct",
+#         messages=[
+#             {"role": "system", "content": "Extract destination and day number to add."},
+#             {"role": "user", "content": prompt},
+#         ],
+#         response_format={"type": "json_object"},
+#     )
+
+#     # Step 2: Search for matching places in the database
+#     try:
+#         result = json.loads(response.choices[0].message.content)
+#         print("Extracted add_new_destination result:", result)
+#         destination = result.get("destination", "").strip()
+#         day = result.get("day", 0)
+#         if not destination:
+#             print("No destination found in prompt.")
+#             return {"error": "No destination found in prompt."}
+
+#         # Only the first match is needed here
+#         matches = manual_search_places(destination, db, limit=1)
+#     except Exception as e:
+#         return {"error": str(e)}
+
+#     # Step 3: Traverse the plan, get to the day, check the destinations available of that day,
+#     # if their latitude when convert to int is the same as the match, return the place
+#     try:
+#         if not matches:
+#             print("No matches found for destination:", destination)
+#             return {"error": "No matching places found."}
+
+#         match = matches[0]
+#         place_id = match.get("place_id")
+#         if not place_id:
+#             print("No place_id in matched place:", match)
+#             return {"error": "No place_id in matched place."}
+
+#         # Fetch full record from places table
+#         place_sql = text("SELECT * FROM places WHERE place_id = :id")
+#         place_row = db.execute(place_sql, {"id": place_id}).fetchone()
+#         if not place_row:
+#             print("No full place record found for place_id:", place_id)
+#             return {"error": "No full place record found for matched place."}
+
+#         # Check if the place is already in the specified day
+#         day_index = day - 1  # Convert to 0-based index
+#         if day_index < 0 or day_index >= len(plan.get("days", [])):
+#             print("Invalid day number:", day)
+#             return {"error": "Invalid day number."}
+#         day_plan = plan["days"][day_index]
+
+#         # Check if the destination already exists in the day's destinations
+#         already_exists = False
+#         for dest in day_plan.get("destinations", []):
+#             # Compare by id or by lat/lon if needed
+#             if str(dest.get("id")) == str(place_id) or (
+#                 int(float(dest.get("latitude", 0))) == int(float(place_row.latitude))
+#                 and int(float(dest.get("longitude", 0)))
+#                 == int(float(place_row.longitude))
+#             ):
+#                 already_exists = True
+#                 break
+
+#         # If it already exists, return a message indicating so
+#         if already_exists:
+#             print("Destination already exists in day", day)
+#             return {"error": "Destination already exists in the specified day."}
+
+#         # If not exist, check if all destinations have latitude when convert to int the same as the match
+#         # if no, return 201 error, asking if for user opinion
+#         all_same_latitude = True
+#         for dest in day_plan.get("destinations", []):
+#             if int(float(dest.get("latitude", 0))) != int(float(place_row.latitude)):
+#                 all_same_latitude = False
+#                 break
+#         print("All same latitude check:", all_same_latitude)
+#         if not all_same_latitude:
+#             return {"error": "201"}
+#         return {
+#             "destination": dict(place_row._mapping),
+#             "day": day,
+#         }
+#     except Exception as e:
+#         print("Exception occurred in add_new_destination:", e, flush=True)
+#         return {"error": str(e)}
+
+import json
+
+
+def add_new_destination(
+    client: Groq, user_prompt: str, plan: dict, db: Session
+) -> dict:
+    print("Adding new destination with prompt:", user_prompt)
+    prompt = f"""
+From the following instruction, extract the destination to be added and the day which it want to add the destination in the itinerary.
+Return as JSON: {{"destination": "...", "day": ...}}.
+
+Instruction: {user_prompt}
+"""
+    response = client.chat.completions.create(
+        model="meta-llama/llama-4-maverick-17b-128e-instruct",
+        messages=[
+            {"role": "system", "content": "Extract destination and day number to add."},
+            {"role": "user", "content": prompt},
+        ],
+        response_format={"type": "json_object"},
+    )
+
+    try:
+        result = json.loads(response.choices[0].message.content)
+        print("Extracted add_new_destination result:", result)
+        destination = result.get("destination", "").strip()
+        day = result.get("day", 0)
+        if not destination:
+            print("No destination found in prompt.")
+            return {"error": "No destination found in prompt."}
+
+        matches = manual_search_places(destination, db, limit=1)
+    except Exception as e:
+        print("Exception during LLM or search:", e, flush=True)
+        return {"error": str(e)}
+
+    try:
+        if not matches:
+            print("No matches found for destination:", destination)
+            return {"error": "No matching places found."}
+
+        match = matches[0]
+        place_id = match.get("place_id")
+        if not place_id:
+            print("No place_id in matched place:", match)
+            return {"error": "No place_id in matched place."}
+
+        # Fetch full record from places table
+        place_sql = text("SELECT * FROM places WHERE place_id = :id")
+        place_row = db.execute(place_sql, {"id": place_id}).fetchone()
+        if not place_row:
+            print("No full place record found for place_id:", place_id)
+            return {"error": "No full place record found for matched place."}
+
+        # Extract latitude and longitude from gps_coordinates JSON field
+        gps_coordinates = place_row._mapping.get("gps_coordinates")
+        if gps_coordinates:
+            try:
+                gps_data = json.loads(gps_coordinates)
+                latitude = gps_data.get("latitude", 0)
+                longitude = gps_data.get("longitude", 0)
+            except Exception as json_exc:
+                print("Error parsing gps_coordinates JSON:", json_exc)
+                latitude = 0
+                longitude = 0
+        else:
+            latitude = 0
+            longitude = 0
+
+        # Check if the place is already in the specified day
+        day_index = day - 1
+        if day_index < 0 or day_index >= len(plan.get("days", [])):
+            print("Invalid day number:", day)
+            return {"error": "Invalid day number."}
+        day_plan = plan["days"][day_index]
+
+        already_exists = False
+        for dest in day_plan.get("destinations", []):
+            if str(dest.get("id")) == str(place_id) or (
+                int(float(dest.get("latitude", 0))) == int(float(latitude))
+                and int(float(dest.get("longitude", 0))) == int(float(longitude))
+            ):
+                already_exists = True
+                break
+
+        if already_exists:
+            print("Destination already exists in day", day)
+            return {"error": "Destination already exists in the specified day."}
+
+        # If not exist, check if all destinations have latitude when convert to int the same as the match
+        all_same_latitude = True
+        for dest in day_plan.get("destinations", []):
+            if int(float(dest.get("latitude", 0))) != int(float(latitude)):
+                all_same_latitude = False
+                break
+        print("All same latitude check:", all_same_latitude)
+        if not all_same_latitude:
+            return {"error": 201}
+        # Add latitude and longitude to the returned destination info
+        place_info = row_to_dict(place_row, Place)
+        return {
+            "destination": place_info,
+            "day": day,
+        }
+    except Exception as e:
+        print("Exception occurred in add_new_destination:", e, flush=True)
+        return {"error": str(e)}
+
+
+def add_conflict_destination(
+    client: Groq, user_prompt: str, plan: dict, db: Session
+) -> dict:
+    prompt = f"""
+From the following instruction, extract the destination to be added and the day which it want to add the destination in the itinerary.
+Return as JSON: {{"destination": "...", "day": ...}}.
+
+Instruction: {user_prompt}
+"""
+    response = client.chat.completions.create(
+        model="meta-llama/llama-4-maverick-17b-128e-instruct",
+        messages=[
+            {"role": "system", "content": "Extract destination and day number to add."},
+            {"role": "user", "content": prompt},
+        ],
+        response_format={"type": "json_object"},
+    )
+
+    try:
+        result = json.loads(response.choices[0].message.content)
+        destination = result.get("destination", "").strip()
+        day = result.get("day", 0)
+        if not destination:
+            return {"error": "No destination found in prompt."}
+
+        matches = manual_search_places(destination, db, limit=1)
+    except Exception as e:
+        return {"error": str(e)}
+
+    try:
+        if not matches:
+            return {"error": "No matching places found."}
+
+        match = matches[0]
+        place_id = match.get("place_id")
+        if not place_id:
+            return {"error": "No place_id in matched place."}
+
+        # Fetch full record from places table
+        place_sql = text("SELECT * FROM places WHERE place_id = :id")
+        place_row = db.execute(place_sql, {"id": place_id}).fetchone()
+        if not place_row:
+            return {"error": "No full place record found for matched place."}
+
+        # Extract latitude and longitude from gps_coordinates JSON field
+        gps_coordinates = place_row._mapping.get("gps_coordinates")
+        if gps_coordinates:
+            try:
+                gps_data = json.loads(gps_coordinates)
+                latitude = gps_data.get("latitude", 0)
+                longitude = gps_data.get("longitude", 0)
+            except Exception as json_exc:
+                latitude = 0
+                longitude = 0
+        else:
+            latitude = 0
+            longitude = 0
+
+        day_index = day - 1  # Convert to 0-based index
+        if day_index < 0 or day_index >= len(plan.get("days", [])):
+            return {"error": "Invalid day number."}
+        day_plan = plan["days"][day_index]
+
+        already_exists = False
+        for dest in day_plan.get("destinations", []):
+            if str(dest.get("id")) == str(place_id) or (
+                int(float(dest.get("latitude", 0))) == int(float(latitude))
+                and int(float(dest.get("longitude", 0))) == int(float(longitude))
+            ):
+                already_exists = True
+                break
+
+        if already_exists:
+            return {"error": "Destination already exists in the specified day."}
+
+        place_info = row_to_dict(place_row, Place)
+        return {
+            "destination": place_info,
+            "day": day,
+        }
+    except Exception as e:
+        print("Exception occurred in add_conflict_destination:", e, flush=True)
+        return {"error": str(e)}
+
+
+def row_to_dict(row, model):
+    columns = [col.name for col in model.__table__.columns]
+    types = {col.name: col.type for col in model.__table__.columns}
+    place = {}
+    for idx, col in enumerate(columns):
+        value = row[idx]
+        col_type = types[col]
+        if isinstance(col_type, JSON):
+            try:
+                value = json.loads(value) if value is not None else None
+            except Exception:
+                pass
+        elif isinstance(col_type, Float):
+            value = float(value) if value is not None else None
+        elif isinstance(col_type, Integer):
+            value = int(value) if value is not None else None
+        place[col] = value
+    return place

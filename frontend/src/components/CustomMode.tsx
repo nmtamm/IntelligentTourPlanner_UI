@@ -55,7 +55,7 @@ import { getOptimizedRoute } from "../utils/geocode";
 import { createTrip, updateTrip } from '../api.js';
 
 interface CustomModeProps {
-  tripData: { name: string; days: DayPlan[] };
+  tripData: { name: string; days: DayPlan[], };
   onUpdate: (data: { name: string; days: DayPlan[] }) => void;
   currency: "USD" | "VND";
   onCurrencyToggle: () => void;
@@ -102,7 +102,10 @@ export function CustomMode({
   >(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] =
     useState(false);
-  const [localTripData, setLocalTripData] = useState(tripData);
+  const [localTripData, setLocalTripData] = useState({
+    ...tripData, city: "",
+    cityCoordinates: { latitude: 0, longitude: 0 }
+  });
   const [members, setMembers] = useState("");
   const [preferences, setPreferences] = useState("");
   const [startDate, setStartDate] = useState<Date>();
@@ -459,7 +462,7 @@ export function CustomMode({
             Array.isArray(result.categories) &&
             (result.valid_starting_point === undefined || result.valid_starting_point === true)
           ) {
-            const allPlaces = await generatePlaces(result, userLocation);
+            const { allPlaces, city, latitude, longitude } = await generatePlaces(result, userLocation);
             console.log("Fetched places:", allPlaces);
             const mappedPlaces = allPlaces.map(place => {
               const dest = mapPlaceToDestination(place, currency, onCurrencyToggle);
@@ -487,6 +490,8 @@ export function CustomMode({
               handleTripDataChange({
                 ...localTripData,
                 days: newDays,
+                city: city,
+                cityCoordinates: { latitude, longitude }
               });
             } else if (mappedPlaces.length > 0) {
               // Fallback: single day
@@ -614,7 +619,7 @@ export function CustomMode({
         break;
       }
 
-      case 'add_new_destination': {
+      case 'search_new_destination': {
         const matches = payload?.matches;
         console.log("AI Matches for new destination:", matches);
         setAIMatches(matches);
@@ -636,6 +641,70 @@ export function CustomMode({
         const pairIndex = latestAIResult.pair_index;
         setViewMode("route-guidance");
         setRouteSegmentIndex(pairIndex);
+        break;
+      }
+
+      case 'delete_current_plan': {
+        setLocalTripData({
+          name: "",
+          days: [
+            {
+              id: "1",
+              dayNumber: 1,
+              destinations: [],
+              optimizedRoute: [],
+            },
+          ],
+          city: "",
+          cityCoordinates: { latitude: 0, longitude: 0 },
+        });
+        setMembers("");
+        setPreferences("");
+        setStartDate(undefined);
+        setEndDate(undefined);
+        setSelectedDay("1");
+        setViewMode("single");
+        setAIMatches(null);
+        setHasUnsavedChanges(true);
+        break;
+      }
+      case 'confirm_add_new_destination': {
+        const addedDay = payload?.day;
+        if (payload?.destination) {
+          if (addedDay && !isNaN(Number(addedDay))) {
+            const day = localTripData.days.find(d => d.id === String(addedDay));
+            if (day) {
+              const destination = mapPlaceToDestination(payload.destination, currency, onCurrencyToggle);
+              const updatedDestinations = [...day.destinations, destination];
+              updateDay(day.id, {
+                ...day,
+                destinations: updatedDestinations,
+                optimizedRoute: [],
+              });
+              toast.success(t('destinationAdded', lang));
+            }
+          }
+        } break;
+      }
+      case 'add_new_destination': {
+        console.log("day to add new destination:", payload?.day);
+        console.log("destination to add:", payload?.destination);
+        const addedDay = payload?.day;
+        if (payload?.destination) {
+          if (addedDay && !isNaN(Number(addedDay))) {
+            const day = localTripData.days.find(d => d.id === String(addedDay));
+            if (day) {
+              const destination = mapPlaceToDestination(payload.destination, currency, onCurrencyToggle);
+              const updatedDestinations = [...day.destinations, destination];
+              updateDay(day.id, {
+                ...day,
+                destinations: updatedDestinations,
+                optimizedRoute: [],
+              });
+              toast.success(t('destinationAdded', lang));
+            }
+          }
+        }
         break;
       }
       default:
@@ -931,6 +1000,9 @@ export function CustomMode({
             onCurrencyToggle={onCurrencyToggle}
             AIMatches={AIMatches}
             onAIMatchesReset={() => setAIMatches(null)}
+            userLocation={userLocation}
+            city={localTripData.city}
+            cityCoordinates={localTripData.cityCoordinates}
           />
         </div>
 
@@ -1148,6 +1220,9 @@ export function CustomMode({
           AICommand={AICommand}
           onAICommand={handleAICommand}
           onAIActionComplete={onAIActionComplete}
+          city={localTripData.city}
+          cityCoordinates={localTripData.cityCoordinates}
+          plan={localTripData}
         />
       </div>
 
