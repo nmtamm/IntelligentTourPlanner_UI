@@ -10,7 +10,7 @@ import { getPlaceById } from "../utils/serp";
 import { parseAmount } from "../utils/parseAmount";
 interface PlaceDetailsModalProps {
   place: Destination | null;
-  isOpen: boolean;
+  isOpen?: boolean;
   onClose: () => void;
   language: "EN" | "VI";
   onAddToDay?: (place: Destination) => void;

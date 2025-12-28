@@ -1628,6 +1628,14 @@ Bạn có thể đề cập một số chi tiết dưới đây để giúp chú
   destinationAlreadyExists: {
     en: "Destination already exists for this day.",
     vi: "Điểm đến đã tồn tại cho ngày này.",
+  },
+  destinationReplaced: {
+    en: "Destination replaced with the new one.",
+    vi: "Điểm đến đã được thay thế bằng điểm mới.",
+  },
+  destinationToReplaceNotFound: {
+    en: "Destination to replace not found.",
+    vi: "Không tìm thấy điểm đến để thay thế.",
   }
 } as const;
 

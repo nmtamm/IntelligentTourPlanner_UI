@@ -260,6 +260,33 @@
             "response_en": "Adding a possibly conflict new destination to itinerary",
             "error_response_vi": "Không thể xác nhận thêm điểm đến mới. Vui lòng thử lại.",
             "error_response_en": "Failed to confirm adding new destination. Please try again."
+        },
+        {
+            "name": "replace_destination_in_plan",
+            "natural_expression": "replace destination in plan",
+            "description": "Replace an existing destination in the itinerary with a new one.",
+            "response_vi": "Đã thay thế điểm đến trong hành trình",
+            "response_en": "Destination in itinerary replaced",
+            "error_response_vi": "Không thể thay thế điểm đến trong hành trình. Vui lòng thử lại.",
+            "error_response_en": "Failed to replace destination in itinerary. Please try again."
+        },
+        {
+            "name": "extract_type_from_prompt",
+            "natural_expression": "extract type from prompt",
+            "description": "Extract the type of command from the user's prompt.",
+            "response_vi": "Đã đưa ra các địa điểm có liên quan dựa trên yêu cầu của bạn",
+            "response_en": "Relevant destinations have been suggested based on your request",
+            "error_response_vi": "Không thể trích xuất loại từ yêu cầu. Vui lòng thử lại.",
+            "error_response_en": "Failed to extract type from prompt. Please try again."
+        },
+        {
+            "name": "find_information_for_a_place",
+            "natural_expression": "find information for a place",
+            "description": "Retrieve detailed information about a specific place.",
+            "response_vi": "Đã tìm thấy thông tin chi tiết về địa điểm",
+            "response_en": "Detailed information about the place found",
+            "error_response_vi": "Không thể tìm thông tin về địa điểm. Vui lòng thử lại.",
+            "error_response_en": "Failed to find information about the place. Please try again."
         }
     ]
 }

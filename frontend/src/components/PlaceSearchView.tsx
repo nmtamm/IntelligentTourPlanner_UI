@@ -20,6 +20,8 @@ interface PlaceSearchViewProps {
   userLocation?: { latitude: number; longitude: number } | null;
   city?: string;
   cityCoordinates?: { latitude: number; longitude: number };
+  shouldPopUp?: boolean;
+  onClosePopUp?: () => void;
 }
 export function PlaceSearchView({
   onAddDestination,
@@ -31,7 +33,9 @@ export function PlaceSearchView({
   onAIMatchesReset,
   userLocation,
   city,
-  cityCoordinates
+  cityCoordinates,
+  shouldPopUp = false,
+  onClosePopUp,
 }: PlaceSearchViewProps) {
   const lang = language.toLowerCase() as "en" | "vi";
   const { primary, secondary, light } = useThemeColors();
@@ -153,6 +157,13 @@ export function PlaceSearchView({
       // Show all places
     }
   }, [selectedFilter, cityCoordinates, userLocation]);
+  useEffect(() => {
+    if (AIMatches && AIMatches.length > 0 && shouldPopUp) {
+      const place = mapPlaceToDestination(AIMatches[0], currency, onCurrencyToggle);
+      setSelectedPlace(place);
+      setIsModalOpen(true);
+    }
+  }, [AIMatches]);
   return (
     <>
       <Card

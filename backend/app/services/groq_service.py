@@ -442,6 +442,53 @@ Return your answer as a JSON object: {{"natural_expression": "<expression>"}}
             "response_en": response_en,
             "response_vi": response_vi,
         }
+    elif command == "replace_destination_in_plan":
+        info = replace_destination_in_plan(client, user_prompt, plan, db)
+        if "error" in info:
+            return {
+                "command": command,
+                "error": info["error"],
+                "response_en": error_response_en,
+                "response_vi": error_response_vi,
+            }
+        return {
+            "command": command,
+            "remove_id": info.get("remove_place_id", 0),
+            "new_destination": info.get("add_place", {}),
+            "day": info.get("day", 0),
+            "response_en": response_en,
+            "response_vi": response_vi,
+        }
+    elif command == "extract_type_from_prompt":
+        info = extract_and_search_type(client, user_prompt, db)
+        if "error" in info:
+            return {
+                "command": command,
+                "error": info["error"],
+                "response_en": error_response_en,
+                "response_vi": error_response_vi,
+            }
+        return {
+            "command": command,
+            "type": info,
+            "response_en": response_en,
+            "response_vi": response_vi,
+        }
+    elif command == "find_information_for_a_place":
+        info = extract_and_get_place_detail(client, user_prompt, db)
+        if "error" in info:
+            return {
+                "command": command,
+                "error": info["error"],
+                "response_en": error_response_en,
+                "response_vi": error_response_vi,
+            }
+        return {
+            "command": command,
+            "place_info": info,
+            "response_en": response_en,
+            "response_vi": response_vi,
+        }
     elif command in [cmd["name"] for cmd in commands]:
         return {
             "command": command,
@@ -941,3 +988,171 @@ def row_to_dict(row, model):
             value = int(value) if value is not None else None
         place[col] = value
     return place
+
+
+def replace_destination_in_plan(
+    client: Groq, prompt: str, plan: dict, db: Session
+) -> dict:
+    """
+    Replace a destination in the current plan with another one.
+    Args:
+        plan (dict): The current plan.
+        prompt (str): User instruction.
+        db (Session): SQLAlchemy session.
+        client (Groq): LLM client.
+    Returns:
+        dict: { "remove_place_id": ..., "add_place": {...} }
+    """
+    # 1. Extract old and new destination names from prompt
+    extract_prompt = f"""
+From the following instruction, extract the name of the place to be replaced and the new place to add.
+Return as JSON: {{"old_destination": "...", "new_destination": "..."}}.
+Instruction: {prompt}
+"""
+    try:
+        response = client.chat.completions.create(
+            model="meta-llama/llama-4-maverick-17b-128e-instruct",
+            messages=[
+                {"role": "system", "content": "Extract old and new destination names."},
+                {"role": "user", "content": extract_prompt},
+            ],
+            response_format={"type": "json_object"},
+        )
+        result = json.loads(response.choices[0].message.content)
+        old_name = result.get("old_destination", "").strip()
+        new_name = result.get("new_destination", "").strip()
+        if not old_name or not new_name:
+            return {"error": "Could not extract destination names from prompt."}
+    except Exception as e:
+        return {"error": f"LLM extraction failed: {e}"}
+
+    # 2. Find 5 most related places for the old destination
+    try:
+        old_matches = manual_search_places(old_name, db, limit=5)
+        if not old_matches:
+            return {"error": f"No matches found for old destination: {old_name}"}
+    except Exception as e:
+        return {"error": f"DB search failed for old destination: {e}"}
+
+    # 3. Find the place_id in plan that matches one of the 5
+    plan_place_ids = set()
+    for day in plan.get("days", []):
+        for dest in day.get("destinations", []):
+            if "id" in dest:
+                plan_place_ids.add(str(dest["id"]))
+    remove_place_id = None
+    for match in old_matches:
+        match_id = str(match.get("place_id"))
+        if match_id in plan_place_ids:
+            remove_place_id = match_id
+            break
+    if not remove_place_id:
+        return {"error": "No matching place in plan to replace."}
+
+    # 4. Find 1 place for the new destination
+    try:
+        new_matches = manual_search_places(new_name, db, limit=1)
+        if not new_matches:
+            return {"error": f"No matches found for new destination: {new_name}"}
+        new_place_id = new_matches[0].get("place_id")
+        if not new_place_id:
+            return {"error": "No place_id for new destination."}
+        place_sql = text("SELECT * FROM places WHERE place_id = :id")
+        place_row = db.execute(place_sql, {"id": new_place_id}).fetchone()
+        if not place_row:
+            return {"error": "No full record for new destination."}
+        add_place = row_to_dict(place_row, Place)
+    except Exception as e:
+        return {"error": f"DB search failed for new destination: {e}"}
+
+    return {
+        "remove_place_id": remove_place_id,
+        "add_place": add_place,
+    }
+
+
+def manual_search_types(query: str, db: Session, limit: int = 20):
+    sql = text("SELECT * FROM types_search WHERE type_id MATCH :q LIMIT :limit")
+    results = db.execute(sql, {"q": query, "limit": limit}).mappings().all()
+    return list(results)
+
+
+def extract_and_search_type(client: Groq, user_prompt: str, db: Session) -> dict:
+    prompt = f"""
+From the following instruction, extract the type of place the user wants (e.g., museum, park, restaurant).
+Return as JSON: {{"type": "..."}}.
+Instruction: {user_prompt}
+"""
+    try:
+        response = client.chat.completions.create(
+            model="meta-llama/llama-4-maverick-17b-128e-instruct",
+            messages=[
+                {"role": "system", "content": "Extract type of place."},
+                {"role": "user", "content": prompt},
+            ],
+            response_format={"type": "json_object"},
+        )
+        result = json.loads(response.choices[0].message.content)
+        type_query = result.get("type", "").strip().lower()
+        if not type_query:
+            return {"error": "No type found in prompt."}
+    except Exception as e:
+        return {"error": f"LLM extraction failed: {e}"}
+
+    try:
+        matches = manual_search_types(type_query, db, limit=1)
+        if not matches:
+            return {"error": f"No matches found for type: {type_query}"}
+        return matches[0]
+    except Exception as e:
+        return {"error": f"DB search failed: {e}"}
+
+
+def extract_and_get_place_detail(client: Groq, user_prompt: str, db: Session) -> dict:
+    prompt = f"""
+From the following instruction, extract the destination (place) the user is referring to.
+Return as JSON: {{"destination": "..."}}.
+Instruction: {user_prompt}
+"""
+    try:
+        response = client.chat.completions.create(
+            model="meta-llama/llama-4-maverick-17b-128e-instruct",
+            messages=[
+                {"role": "system", "content": "Extract destination name."},
+                {"role": "user", "content": prompt},
+            ],
+            response_format={"type": "json_object"},
+        )
+        result = json.loads(response.choices[0].message.content)
+        destination = result.get("destination", "").strip()
+        if not destination:
+            return {"error": "No destination found in prompt."}
+    except Exception as e:
+        return {"error": f"LLM extraction failed: {e}"}
+
+    # 2. Find that destination using manual_search_places
+    try:
+        matches = manual_search_places(destination, db, limit=1)
+        if not matches:
+            return {"error": f"No matches found for destination: {destination}"}
+        place_id = matches[0].get("place_id")
+        if not place_id:
+            return {"error": "No place_id found for matched destination."}
+    except Exception as e:
+        return {"error": f"DB search failed: {e}"}
+
+    # 3. Find that place in the places table
+    try:
+        place_sql = text("SELECT * FROM places WHERE place_id = :id")
+        place_row = db.execute(place_sql, {"id": place_id}).fetchone()
+        if not place_row:
+            return {"error": "No full place record found for matched place."}
+    except Exception as e:
+        return {"error": f"DB fetch failed: {e}"}
+
+    # 4. Use row_to_dict to return the whole record
+    try:
+        place_info = row_to_dict(place_row, Place)
+        return place_info
+    except Exception as e:
+        return {"error": f"Failed to convert row to dict: {e}"}

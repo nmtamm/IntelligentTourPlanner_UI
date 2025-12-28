@@ -45,7 +45,7 @@ import { format, addDays, differenceInDays, set } from "date-fns";
 import { t } from "../locales/translations";
 import { useThemeColors } from "../hooks/useThemeColors";
 import { convertCurrency, convertAllDays } from "../utils/exchangerate";
-import { fetchPlacesData, generatePlaces, mapPlaceToDestination, savePlacesToBackend } from "../utils/serp";
+import { fetchNearbyPlaces, fetchPlacesData, generatePlaces, mapPlaceToDestination, savePlacesToBackend } from "../utils/serp";
 import { geocodeDestination } from "../utils/geocode";
 import { makeDestinationFromGeo } from "../utils/destinationFactory";
 import { sendLocationToBackend } from "../utils/geolocation";
@@ -53,6 +53,8 @@ import { fetchItineraryWithGroq, detectAndExecuteGroqCommand } from "../utils/gr
 import { parseAmount, detectCurrencyAndNormalizePrice } from "../utils/parseAmount"
 import { getOptimizedRoute } from "../utils/geocode";
 import { createTrip, updateTrip } from '../api.js';
+import { PlaceDetailsModal } from "./PlaceDetailsModal";
+import { map } from "leaflet";
 
 interface CustomModeProps {
   tripData: { name: string; days: DayPlan[], };
@@ -123,7 +125,8 @@ export function CustomMode({
   const dayChipsContainerRef = useRef<HTMLDivElement>(null);
   const [latestAIResult, setLatestAIResult] = useState<any>(null);
   const [AIMatches, setAIMatches] = useState<Destination[] | null>(null);
-
+  const [showPlaceDetailsModal, setShowPlaceDetailsModal] = useState(false);
+  const [placeDetails, setPlaceDetails] = useState<Destination | null>(null);
   const handleTripDataChange = (newData: {
     name: string;
     days: DayPlan[];
@@ -707,6 +710,49 @@ export function CustomMode({
         }
         break;
       }
+      case 'replace_destination_in_plan': {
+        const remove_id = payload?.remove_id;
+        const new_destination_full_place = payload?.new_destination;
+        // Find the destination id in the current plan
+        if (remove_id && new_destination_full_place) {
+          let found = false;
+          for (const day of localTripData.days) {
+            const destIndex = day.destinations.findIndex(dest => dest.id === remove_id);
+            if (destIndex !== -1) {
+              // Write the new destination to the found index but with different id
+              const destination = mapPlaceToDestination(new_destination_full_place, currency, onCurrencyToggle);
+              const updatedDestinations = [...day.destinations];
+              updatedDestinations[destIndex] = destination;
+              updateDay(day.id, {
+                ...day,
+                destinations: updatedDestinations,
+                optimizedRoute: [],
+              });
+              toast.success(t('destinationReplaced', lang));
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            toast.error(t('destinationToReplaceNotFound', lang));
+          }
+        }
+        break;
+      }
+      case 'extract_type_from_prompt': {
+        const place_type = payload?.type;
+        if (place_type && userLocation) {
+          const destinations = fetchNearbyPlaces(place_type, userLocation?.latitude, userLocation?.longitude, 1000);
+          setAIMatches(destinations);
+        } break;
+      }
+      case 'find_information_for_a_place': {
+        const fullPlace = payload?.place_info;
+        console.log("Full place info from AI:", fullPlace);
+        setAIMatches(fullPlace ? [fullPlace] : []);
+        setShowPlaceDetailsModal(true);
+        break;
+      }
       default:
         console.warn("Unknown AI command:", command);
     }
@@ -1003,6 +1049,8 @@ export function CustomMode({
             userLocation={userLocation}
             city={localTripData.city}
             cityCoordinates={localTripData.cityCoordinates}
+            shouldPopUp={showPlaceDetailsModal}
+            onClosePopUp={() => setShowPlaceDetailsModal(false)}
           />
         </div>
 
