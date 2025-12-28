@@ -69,9 +69,11 @@ export function IntroScreen({ onContinue, language, onLanguageChange }: IntroScr
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    onContinue(email, username, password);
+    // Use username as email if email is not provided (for login form)
+    const loginEmail = email || `${username}@temp.com`;
+    onContinue(loginEmail, username, password);
   };
-
+  
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     onContinue(email, username, password);
