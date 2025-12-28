@@ -927,10 +927,12 @@ export function CustomMode({
             }}
             language={language}
             selectedDayId={selectedDay}
+            currentDayNumber={localTripData.days.find((d) => d.id === selectedDay)?.dayNumber}
             currency={currency}
             onCurrencyToggle={onCurrencyToggle}
             AIMatches={AIMatches}
-            onAIMatchesReset={() => setAIMatches(null)}
+            onAIMatchesReset={() => setAIMatches(null)
+            }
           />
         </div>
 

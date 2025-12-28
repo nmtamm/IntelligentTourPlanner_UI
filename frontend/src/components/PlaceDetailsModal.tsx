@@ -18,6 +18,7 @@ interface PlaceDetailsModalProps {
   onDelete?: (placeId: string) => void;
   showDeleteButton?: boolean;
   currency: "USD" | "VND";
+  currentDayNumber?: number;
 }
 
 export function PlaceDetailsModal({
@@ -30,6 +31,7 @@ export function PlaceDetailsModal({
   onDelete,
   showDeleteButton = false,
   currency,
+  currentDayNumber,
 }: PlaceDetailsModalProps) {
   if (!isOpen || !place) return null;
 
@@ -331,9 +333,15 @@ export function PlaceDetailsModal({
                         e.currentTarget.style.boxShadow = "none";
                       }}
                     >
-                      {t("addToDay", lang)}
+                      {currentDayNumber 
+                        ? (language === "EN" 
+                            ? `Add to Day ${currentDayNumber}` 
+                            : `Thêm vào Ngày ${currentDayNumber}`)
+                        : t("addToDay", lang)
+                      }
                     </Button>
                   )}
+
 
                   {/* Delete Button */}
                   {showDeleteButton && onDelete && (
