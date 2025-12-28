@@ -581,7 +581,7 @@ export function CustomMode({
       {/* Left Side - 75% */}
       <div className="flex-1 flex gap-4 overflow-hidden">
         {/* Left: Place Search - Full Height */}
-        <div className="flex-1 relative h-full">
+        <div className="flex-1 relative h-full min-w-0">
           <PlaceSearchView
             onAddDestination={async (place: Destination) => {
               const day = localTripData.days.find((d) => d.id === selectedDay);

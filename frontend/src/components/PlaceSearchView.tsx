@@ -151,6 +151,29 @@ export function PlaceSearchView({
                   disabled={isSearching}
                   className="flex-1 bg-transparent border-none outline-none text-gray-700 placeholder:text-gray-400 text-[14px] transition-all"
                 />
+
+                <button
+                  onClick={() => onSearchInputChange(searchQuery)}
+                  disabled={isSearching || !searchQuery.trim()}
+                  className="absolute right-0 top-0 bottom-0 px-4 rounded-xl text-white flex items-center justify-center transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed shadow-md hover:shadow-lg hover:scale-105 active:scale-95 group-focus-within:shadow-xl"
+                  style={{
+                    backgroundColor: primary,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSearching && searchQuery.trim()) {
+                      e.currentTarget.style.backgroundColor = secondary;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = primary;
+                  }}
+                >
+                  {isSearching ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Search className="w-4 h-4 transition-transform group-focus-within:scale-110" />
+                  )}
+                </button>
               </div>
             </div>
 
