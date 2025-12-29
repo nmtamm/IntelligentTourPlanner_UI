@@ -19,7 +19,7 @@ interface PlaceDetailsModalProps {
   showDeleteButton?: boolean;
   currency: "USD" | "VND";
 }
-
+import { translateEnToVi, translateViToEn, detectLanguage } from "../utils/gtranslate";
 export function PlaceDetailsModal({
   place,
   isOpen,
@@ -37,7 +37,7 @@ export function PlaceDetailsModal({
   const { primary, secondary, light } = useThemeColors();
   const [detailedDestination, setDetailedDestination] = useState<Destination | null>(null);
   const currencySymbol = currency === 'USD' ? 'USD' : 'VND';
-
+  const [translatedDetails, setTranslatedDetails] = useState<Record<string, string>>({});
   // Close on ESC key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -57,6 +57,7 @@ export function PlaceDetailsModal({
     let isMounted = true;
     getPlaceById(place.id).then((result) => {
       if (isMounted) setDetailedDestination(result);
+      console.log("Fetched detailed destination:", detailedDestination);
     });
     return () => { isMounted = false; };
   }, [place.id]);
@@ -253,7 +254,21 @@ export function PlaceDetailsModal({
                     })()} {currencySymbol}
                   </div>
                 )}
-
+                {detailedDestination?.place_detail && (
+                  <div className="flex flex-col gap-3 text-gray-700">
+                    <div style={{ color: "#2563eb", fontWeight: 700, fontSize: 18, marginBottom: 4 }}>
+                      Detailed
+                    </div>
+                    {Object.entries(detailedDestination.place_detail).map(([field, content]) => (
+                      <div key={field} style={{ marginBottom: 12 }}>
+                        <div style={{ color: "#2563eb", fontWeight: 600 }}>
+                          {field.charAt(0).toUpperCase() + field.slice(1)}
+                        </div>
+                        <div style={{ color: "#111" }}>{content}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {/* Action Buttons */}
                 <div className="flex gap-3 pt-4">
                   {/* Website Link */}
