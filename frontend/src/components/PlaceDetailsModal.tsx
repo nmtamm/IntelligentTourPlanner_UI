@@ -18,6 +18,7 @@ interface PlaceDetailsModalProps {
   onDelete?: (placeId: string) => void;
   showDeleteButton?: boolean;
   currency: "USD" | "VND";
+  currentDayNumber?: number;
 }
 import { translateEnToVi, translateViToEn, detectLanguage } from "../utils/gtranslate";
 export function PlaceDetailsModal({
@@ -30,6 +31,7 @@ export function PlaceDetailsModal({
   onDelete,
   showDeleteButton = false,
   currency,
+  currentDayNumber,
 }: PlaceDetailsModalProps) {
   if (!isOpen || !place) return null;
 
@@ -181,24 +183,55 @@ export function PlaceDetailsModal({
                         {detailedDestination.rating.toFixed(1)}
                       </span>
                       <div className="flex items-center gap-0.5">
-                        {[1, 2, 3, 4, 5].map((starIndex) => {
+                        {Array.from({ length: 5 }, (_, index) => {
+                          const starPosition = index + 1; // 1-based star position (1, 2, 3, 4, 5)
                           const rating = detailedDestination?.rating !== undefined && detailedDestination?.rating !== null
                             ? detailedDestination.rating
                             : 4.5;
-                          const isFullStar = starIndex <= Math.floor(rating);
-                          const isHalfStar =
-                            starIndex === Math.ceil(rating) && rating % 1 !== 0;
-
+                          
+                          // Calculate fill percentage for this star (0-100)
+                          const fillPercent = Math.max(0, Math.min(100, (rating - index) * 100));
+                          
+                          // Determine star state
+                          const isFilled = fillPercent === 100;
+                          const isEmpty = fillPercent === 0;
+                          const isPartial = fillPercent > 0 && fillPercent < 100;
+          
                           return (
-                            <div key={starIndex} className="relative w-3.5 h-3.5">
-                              <Star className="w-3.5 h-3.5 fill-gray-400 text-gray-400 absolute" />
-                              {isFullStar && (
-                                <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400 absolute" />
-                              )}
-                              {isHalfStar && (
-                                <div className="absolute overflow-hidden w-1/2 h-full">
-                                  <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
-                                </div>
+                            <div key={starPosition} className="relative w-4 h-4">
+                              {isPartial ? (
+                                /* Partial Star: Overlay technique for precise decimal fill */
+                                <>
+                                  {/* Base: Empty gray star */}
+                                  <Star
+                                    className="w-4 h-4 absolute inset-0 transition-all duration-150"
+                                    fill="#E5E7EB"
+                                    stroke="#E5E7EB"
+                                    strokeWidth={1.5}
+                                  />
+                                  {/* Overlay: Yellow star clipped to exact percentage */}
+                                  <div 
+                                    className="absolute inset-0 overflow-hidden transition-all duration-150"
+                                    style={{
+                                      width: `${fillPercent}%`,
+                                    }}
+                                  >
+                                    <Star
+                                      className="w-4 h-4 absolute left-0 top-0"
+                                      fill="#FACC15"
+                                      stroke="#FACC15"
+                                      strokeWidth={1.5}
+                                    />
+                                  </div>
+                                </>
+                              ) : (
+                                /* Full or Empty Star: Simple single icon */
+                                <Star
+                                  className="w-4 h-4 transition-all duration-150"
+                                  fill={isFilled ? "#FACC15" : "#E5E7EB"}
+                                  stroke={isFilled ? "#FACC15" : "#E5E7EB"}
+                                  strokeWidth={1.5}
+                                />
                               )}
                             </div>
                           );
@@ -315,9 +348,15 @@ export function PlaceDetailsModal({
                         e.currentTarget.style.boxShadow = "none";
                       }}
                     >
-                      {t("addToDay", lang)}
+                      {currentDayNumber 
+                        ? (language === "EN" 
+                            ? `Add to Day ${currentDayNumber}` 
+                            : `Thêm vào Ngày ${currentDayNumber}`)
+                        : t("addToDay", lang)
+                      }
                     </Button>
                   )}
+
 
                   {/* Delete Button */}
                   {showDeleteButton && onDelete && (

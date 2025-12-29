@@ -1494,8 +1494,8 @@ Bạn có thể đề cập một số chi tiết dưới đây để giúp chú
     vi: "Đang thêm...",
   },
   noDestinationsYet: {
-    en: "No destinations yet. Add a destination or click on the map!",
-    vi: "Chưa có điểm đến nào. Thêm điểm đến hoặc nhấp vào bản đồ!",
+    en: "No destinations yet. Add a destination in Custome mode!",
+    vi: "Chưa có điểm đến nào. Thêm điểm đến ở chế độ tuỳ chỉnh!",
   },
   detailPlaceholder: {
     en: "Detail (e.g., entrance fee)",

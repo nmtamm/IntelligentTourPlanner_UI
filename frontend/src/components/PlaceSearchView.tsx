@@ -22,6 +22,7 @@ interface PlaceSearchViewProps {
   cityCoordinates?: { latitude: number; longitude: number };
   shouldPopUp?: boolean;
   onClosePopUp?: () => void;
+  currentDayNumber?: number;
 }
 export function PlaceSearchView({
   onAddDestination,
@@ -36,6 +37,7 @@ export function PlaceSearchView({
   cityCoordinates,
   shouldPopUp = false,
   onClosePopUp,
+  currentDayNumber,
 }: PlaceSearchViewProps) {
   const lang = language.toLowerCase() as "en" | "vi";
   const { primary, secondary, light } = useThemeColors();
@@ -362,8 +364,8 @@ export function PlaceSearchView({
                       <div className="space-y-2">
                         {/* Name & Type */}
                         <div className="flex items-start justify-between gap-2">
-                          <h4 className="text-gray-900 font-medium break-words">{place.name}</h4>
-                          {place.placeType && (
+                          <h4 className="text-gray-900 font-medium break-words">{place.title}</h4>
+                          {place.type && (
                             <span
                               className="text-xs px-2 py-1 rounded-md shrink-0"
                               style={{
@@ -444,6 +446,7 @@ export function PlaceSearchView({
         onAddToDay={handleAddToDay}
         showAddButton={true}
         currency={currency}
+        currentDayNumber={currentDayNumber}
       />
     </>
   );
