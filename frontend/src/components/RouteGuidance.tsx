@@ -1,7 +1,6 @@
 import { Card } from './ui/card';
-import { Button } from './ui/button';
 import { ArrowLeft, Navigation, MapPin, Clock, Route } from 'lucide-react';
-import { DayPlan, Destination } from '../types';
+import { DayPlan } from '../types';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
 import polyline from '@mapbox/polyline';
 import React, { useEffect } from 'react';

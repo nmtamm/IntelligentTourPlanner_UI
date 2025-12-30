@@ -1,26 +1,19 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
-import { Input } from "./ui/input";
 import {
-  Plus,
   Trash2,
-  DollarSign,
-  Loader2,
   Star,
-  Clock,
   GripVertical,
   Wallet,
 } from "lucide-react";
-import { DayPlan, Destination, CostItem } from "../types";
-import { toast } from "sonner";
+import { DayPlan, Destination, Place } from "../types";
 import { t } from "../locales/translations";
 import { ErrorNotification } from "./ErrorNotification";
 import { PlaceDetailsModal } from "./PlaceDetailsModal";
 import { useDrag, useDrop, DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { parseAmount } from "../utils/parseAmount";
-import { getPlaceById } from "../utils/serp";
 
 interface DayViewProps {
   day: DayPlan;
@@ -29,6 +22,7 @@ interface DayViewProps {
   onCurrencyToggle: () => void;
   language: "EN" | "VI";
   onDestinationClick?: (destination: Destination) => void;
+  detailedDestinations: Record<string, Place | null>;
 }
 
 interface DraggableDestinationCardProps {
@@ -43,6 +37,7 @@ interface DraggableDestinationCardProps {
   scrollContainerRef: React.RefObject<HTMLDivElement>;
   onDragStateChange?: (isDragging: boolean) => void;
   currency: "USD" | "VND";
+  detailedDestination?: Place | null;
 }
 
 const ITEM_TYPE = "DESTINATION_CARD";
@@ -59,13 +54,13 @@ function DraggableDestinationCard({
   scrollContainerRef,
   onDragStateChange,
   currency,
+  detailedDestination
 }: DraggableDestinationCardProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [isPressed, setIsPressed] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
   // Fetch detailed info if needed
-  const [detailedDestination, setDetailedDestination] = useState<Destination | null>(null);
   const [{ handlerId }, drop] = useDrop({
     accept: ITEM_TYPE,
     collect(monitor) {
@@ -157,14 +152,6 @@ function DraggableDestinationCard({
       onDragStateChange(isDragging);
     }
   }, [isDragging, onDragStateChange]);
-
-  useEffect(() => {
-    let isMounted = true;
-    getPlaceById(destination.id).then((result) => {
-      if (isMounted) setDetailedDestination(result);
-    });
-    return () => { isMounted = false; };
-  }, [destination.id]);
 
   // Attach drag to the grip handle, drop to the whole card
   drag(drop(ref));
@@ -294,7 +281,9 @@ function DraggableDestinationCard({
                 onClick(destination);
               }}
             >
-              {destination.name}
+              {lang === "en"
+                ? (Array.isArray(detailedDestination?.en_names) ? detailedDestination?.en_names[0] : (detailedDestination?.en_names || destination.name))
+                : (Array.isArray(detailedDestination?.vi_names) ? detailedDestination?.vi_names[0] : (detailedDestination?.vi_names || destination.name))}
             </h3>
 
             {/* Delete Button - Enhanced States */}
@@ -332,9 +321,14 @@ function DraggableDestinationCard({
 
           {/* Category Tag - Moved right below name */}
           <div className="mb-2 ml-7">
-            {detailedDestination?.type && (
+            {lang === 'en' && detailedDestination?.best_type_id_en && (
               <span className="inline-block bg-[#E8FBEA] text-[#16A34A] text-[13px] font-medium px-[10px] py-1 rounded-full">
-                {detailedDestination.type}
+                {detailedDestination.best_type_id_en.charAt(0).toUpperCase() + detailedDestination.best_type_id_en.slice(1)}
+              </span>
+            )}
+            {lang === 'vi' && detailedDestination?.best_type_id_vi && (
+              <span className="inline-block bg-[#E8FBEA] text-[#16A34A] text-[13px] font-medium px-[10px] py-1 rounded-full">
+                {detailedDestination.best_type_id_vi.charAt(0).toUpperCase() + detailedDestination.best_type_id_vi.slice(1)}
               </span>
             )}
           </div>
@@ -352,10 +346,10 @@ function DraggableDestinationCard({
                 const rating = detailedDestination?.rating !== undefined && detailedDestination?.rating !== null
                   ? detailedDestination.rating
                   : 4.5;
-                
+
                 // Calculate fill percentage for this star (0-100)
                 const fillPercent = Math.max(0, Math.min(100, (rating - index) * 100));
-                
+
                 // Determine star state
                 const isFilled = fillPercent === 100;
                 const isEmpty = fillPercent === 0;
@@ -372,12 +366,12 @@ function DraggableDestinationCard({
                           fill="#E5E7EB"
                           stroke="#E5E7EB"
                           strokeWidth={1.5}
-                          style={{ 
+                          style={{
                             transform: isHovered ? 'scale(1.08)' : 'scale(1)',
                           }}
                         />
                         {/* Overlay: Yellow star clipped to exact percentage */}
-                        <div 
+                        <div
                           className="absolute inset-0 overflow-hidden transition-all duration-150"
                           style={{
                             width: `${fillPercent}%`,
@@ -388,7 +382,7 @@ function DraggableDestinationCard({
                             fill="#FACC15"
                             stroke="#FACC15"
                             strokeWidth={1.5}
-                            style={{ 
+                            style={{
                               transform: isHovered ? 'scale(1.08)' : 'scale(1)',
                               filter: isHovered ? 'drop-shadow(0 0 4px rgba(250,204,21,0.5))' : 'none',
                             }}
@@ -402,7 +396,7 @@ function DraggableDestinationCard({
                         fill={isFilled ? "#FACC15" : "#E5E7EB"}
                         stroke={isFilled ? "#FACC15" : "#E5E7EB"}
                         strokeWidth={1.5}
-                        style={{ 
+                        style={{
                           transform: isHovered ? 'scale(1.08)' : 'scale(1)',
                           filter: isHovered && isFilled ? 'drop-shadow(0 0 4px rgba(250,204,21,0.5))' : 'none',
                         }}
@@ -440,6 +434,7 @@ function DayViewContent({
   onCurrencyToggle,
   language,
   onDestinationClick,
+  detailedDestinations
 }: DayViewProps) {
   const lang = language.toLowerCase() as "en" | "vi";
   const [error, setError] = useState<string | null>(null);
@@ -616,6 +611,7 @@ function DayViewContent({
                   scrollContainerRef={scrollContainerRef}
                   onDragStateChange={setIsAnyCardDragging}
                   currency={currency}
+                  detailedDestination={detailedDestinations[destination.id] || null}
                 />
               ))
             )}
@@ -661,6 +657,8 @@ function DayViewContent({
           setIsModalOpen(false);
         }}
         showDeleteButton={true}
+        currency={currency}
+        detailedDestination={selectedPlace ? detailedDestinations[selectedPlace.id] : null}
       />
     </>
   );

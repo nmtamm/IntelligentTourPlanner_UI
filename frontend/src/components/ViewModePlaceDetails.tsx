@@ -1,34 +1,28 @@
 import { Card } from "./ui/card";
-import { Destination } from "../types";
+import { Destination, Place } from "../types";
 import { t } from "../locales/translations";
 import { useThemeColors } from "../hooks/useThemeColors";
-import { MapPin, Star, Clock, DollarSign, ExternalLink } from "lucide-react";
+import { MapPin, Star, Clock, DollarSign, ExternalLink, Wallet } from "lucide-react";
 import { Button } from "./ui/button";
+import React from "react";
+import { parseAmount } from "../utils/parseAmount";
 
 interface ViewModePlaceDetailsProps {
   place: Destination | null;
   language: "EN" | "VI";
   currency: "USD" | "VND";
+  detailedDestination?: Place | null;
 }
 
 export function ViewModePlaceDetails({
   place,
   language,
   currency,
+  detailedDestination
 }: ViewModePlaceDetailsProps) {
   const lang = language.toLowerCase() as "en" | "vi";
   const { primary, secondary, light } = useThemeColors();
-
-  const calculateTotalCost = (costs: { amount: number }[]) => {
-    return costs.reduce((sum, cost) => sum + cost.amount, 0);
-  };
-
-  const convertCurrency = (amount: number) => {
-    if (currency === "VND") {
-      return (amount * 24000).toLocaleString("vi-VN");
-    }
-    return amount.toFixed(2);
-  };
+  const currencySymbol = currency === 'USD' ? 'USD' : 'VND';
 
   if (!place) {
     return (
@@ -47,10 +41,6 @@ export function ViewModePlaceDetails({
     );
   }
 
-  const totalCost = place.costs?.length
-    ? calculateTotalCost(place.costs)
-    : null;
-
   return (
     <Card
       className="flex-1 rounded-[24px] border border-[#E5E7EB] overflow-hidden"
@@ -62,10 +52,18 @@ export function ViewModePlaceDetails({
       <div className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
         <div className="p-6 space-y-4">
           {/* Place Name */}
-          <h2 className="text-gray-900 text-2xl">{place.name}</h2>
+          <h2 className="text-gray-900 text-2xl">
+            {language === "EN"
+              ? (detailedDestination && Array.isArray(detailedDestination.en_names)
+                ? detailedDestination.en_names[0]
+                : (detailedDestination?.en_names || place.name))
+              : (detailedDestination && Array.isArray(detailedDestination.vi_names)
+                ? detailedDestination.vi_names[0]
+                : (detailedDestination?.vi_names || place.name))}
+          </h2>
 
           {/* Place Type */}
-          {place.placeType && (
+          {language === "EN" && detailedDestination?.best_type_id_en && (
             <div>
               <span
                 className="inline-block text-sm px-3 py-1.5 rounded-lg"
@@ -74,13 +72,27 @@ export function ViewModePlaceDetails({
                   color: primary,
                 }}
               >
-                {place.placeType}
+                {detailedDestination.best_type_id_en.charAt(0).toUpperCase() + detailedDestination.best_type_id_en.slice(1)}
+              </span>
+            </div>
+          )}
+
+          {language === "VI" && detailedDestination?.best_type_id_vi && (
+            <div>
+              <span
+                className="inline-block text-sm px-3 py-1.5 rounded-lg"
+                style={{
+                  backgroundColor: light,
+                  color: primary,
+                }}
+              >
+                {detailedDestination.best_type_id_vi.charAt(0).toUpperCase() + detailedDestination.best_type_id_vi.slice(1)}
               </span>
             </div>
           )}
 
           {/* Rating & Review Count */}
-          {place.rating && (
+          {detailedDestination?.rating && (
             <div className="flex items-center gap-2">
               {/* Rating Badge */}
               <div
@@ -88,11 +100,11 @@ export function ViewModePlaceDetails({
                 style={{ backgroundColor: primary }}
               >
                 <span className="text-white text-sm">
-                  {place.rating.toFixed(1)}
+                  {detailedDestination.rating.toFixed(1)}
                 </span>
                 <div className="flex items-center gap-0.5">
                   {[1, 2, 3, 4, 5].map((starIndex) => {
-                    const rating = place.rating || 0;
+                    const rating = detailedDestination.rating || 0;
                     const isFullStar = starIndex <= Math.floor(rating);
                     const isHalfStar =
                       starIndex === Math.ceil(rating) && rating % 1 !== 0;
@@ -115,9 +127,9 @@ export function ViewModePlaceDetails({
               </div>
 
               {/* Review Count */}
-              {place.reviewCount && (
+              {detailedDestination?.reviews && (
                 <span className="text-sm text-gray-600">
-                  ({place.reviewCount.toLocaleString()}{" "}
+                  ({detailedDestination?.reviews.toLocaleString()}{" "}
                   {language === "EN" ? "reviews" : "đánh giá"})
                 </span>
               )}
@@ -139,82 +151,74 @@ export function ViewModePlaceDetails({
           )}
 
           {/* Open Hours */}
-          {place.openHours && (
+          {detailedDestination?.hours && (
             <div className="flex items-center gap-3 text-gray-700">
-              <Clock
-                className="w-5 h-5 shrink-0"
-                style={{ color: primary }}
-              />
-              <span className="text-sm">{place.openHours}</span>
-            </div>
-          )}
-
-          {/* Price Level */}
-          {place.priceLevel && (
-            <div className="flex items-center gap-3 text-gray-700">
-              <DollarSign
-                className="w-5 h-5 shrink-0"
-                style={{ color: primary }}
-              />
+              <Clock className="w-5 h-5 shrink-0" style={{ color: primary }} />
               <span className="text-sm">
-                {"💰".repeat(place.priceLevel)}
-                <span className="text-gray-300">
-                  {"💰".repeat(4 - place.priceLevel)}
-                </span>
+                {(detailedDestination.hours ?? "")
+                  .split("·")
+                  .map((part, idx, arr) => (
+                    <React.Fragment key={idx}>
+                      {part.trim()}
+                      {idx < arr.length - 1 && <br />}
+                    </React.Fragment>
+                  ))}
               </span>
             </div>
           )}
 
-          {/* Total Cost Display */}
-          {totalCost !== null && totalCost > 0 && (
-            <div className="pt-2 border-t border-gray-200">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">
-                  {t("totalCost", lang)}:
-                </span>
-                <span
-                  className="text-lg"
-                  style={{ color: primary, fontWeight: 600 }}
-                >
-                  {currency === "USD" ? "$" : "₫"}
-                  {convertCurrency(totalCost)}
-                </span>
-              </div>
+          {/* Price Level */}
+          {detailedDestination?.price && (
+            <div className="flex items-center gap-3 text-gray-700">
+              <Wallet className="w-4 h-4" />
+              {(() => {
+                const parsed = parseAmount(detailedDestination.price);
+                return parsed.isApprox && parsed.min !== parsed.max
+                  ? `${parsed.min.toLocaleString()} \u2013 ${parsed.max.toLocaleString()}`
+                  : parsed.min.toLocaleString();
+              })()} {currencySymbol}
             </div>
           )}
 
-          {/* Costs Breakdown */}
-          {place.costs && place.costs.length > 0 && place.costs[0].amount > 0 && (
-            <div className="pt-2">
-              <p className="text-xs text-gray-500 mb-2">
-                {t("costBreakdown", lang)}:
-              </p>
-              <div className="space-y-1">
-                {place.costs.map((cost) => (
-                  <div
-                    key={cost.id}
-                    className="text-sm text-gray-600 flex justify-between"
-                  >
-                    <span>
-                      {cost.detail || (language === "EN" ? "Cost" : "Chi phí")}
-                    </span>
-                    <span className="text-gray-900">
-                      {currency === "USD" ? "$" : "₫"}
-                      {convertCurrency(cost.amount)}
-                    </span>
-                  </div>
-                ))}
+          {/* Detailed Information */}
+          {language === "EN" && detailedDestination?.place_detail_en && (
+            <div className="flex flex-col gap-3 text-gray-700">
+              <div style={{ color: "#2563eb", fontWeight: 700, fontSize: 18, marginBottom: 4 }}>
+                Details
               </div>
+              {Object.entries(detailedDestination.place_detail_en).map(([field, content]) => (
+                <div key={field} style={{ marginBottom: 12 }}>
+                  <div style={{ color: "#2563eb", fontWeight: 600 }}>
+                    {field.charAt(0).toUpperCase() + field.slice(1)}
+                  </div>
+                  <div style={{ color: "#111" }}>{content}</div>
+                </div>
+              ))}
+            </div>
+          )}
+          {language === "VI" && detailedDestination?.place_detail_vi && (
+            <div className="flex flex-col gap-3 text-gray-700">
+              <div style={{ color: "#2563eb", fontWeight: 700, fontSize: 18, marginBottom: 4 }}>
+                Thông tin chi tiết
+              </div>
+              {Object.entries(detailedDestination.place_detail_vi).map(([field, content]) => (
+                <div key={field} style={{ marginBottom: 12 }}>
+                  <div style={{ color: "#2563eb", fontWeight: 600 }}>
+                    {field.charAt(0).toUpperCase() + field.slice(1)}
+                  </div>
+                  <div style={{ color: "#111" }}>{content}</div>
+                </div>
+              ))}
             </div>
           )}
 
           {/* Website Button */}
-          {place.website && (
+          {detailedDestination?.website && (
             <div className="pt-2">
               <Button
                 variant="outline"
                 className="w-full relative overflow-hidden group transition-all duration-200"
-                onClick={() => window.open(place.website, "_blank")}
+                onClick={() => window.open(detailedDestination.website, "_blank")}
                 style={{
                   borderColor: primary,
                   borderWidth: "2px",

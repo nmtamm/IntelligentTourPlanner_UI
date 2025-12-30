@@ -145,8 +145,52 @@ def get_place_by_id(id: str, db=Depends(get_db)):
         return {"status": "error", "message": str(e)}
 
 
+# @router.get("/api/places/unique-top-types")
+# async def get_unique_top_types_per_city_json(db=Depends(get_db)):
+#     # Get all city names
+#     city_names = [
+#         row[0]
+#         for row in db.execute(
+#             text("SELECT DISTINCT city_name FROM type_stats")
+#         ).fetchall()
+#     ]
+#     used_type_ids = set()
+#     all_items = []
+
+#     for city in city_names:
+#         rows = db.execute(
+#             text(
+#                 "SELECT type_id FROM type_stats WHERE city_name = :city_name ORDER BY type_score DESC"
+#             ),
+#             {"city_name": city},
+#         ).fetchall()
+#         selected = []
+#         for row in rows:
+#             type_id = row[0]
+#             if type_id not in used_type_ids:
+#                 selected.append(type_id)
+#                 used_type_ids.add(type_id)
+#             if len(selected) == 10:
+#                 break
+#         # Prepare label_en for translation
+#         for type_id in selected:
+#             label_en = type_id.replace("_", " ")
+#             all_items.append({"id": type_id, "labelEN": label_en})
+
+#     async def translate(item):
+#         label_vi = await translateEnToVi(item["labelEN"])
+#         item["labelVI"] = label_vi
+#         return item
+
+#     all_items = all_items = await asyncio.gather(
+#         *(translate(item) for item in all_items)
+#     )
+
+#     return all_items
+
+
 @router.get("/api/places/unique-top-types")
-async def get_unique_top_types_per_city_json(db=Depends(get_db)):
+def get_unique_top_types_per_city_json(db=Depends(get_db)):
     # Get all city names
     city_names = [
         row[0]
@@ -160,7 +204,7 @@ async def get_unique_top_types_per_city_json(db=Depends(get_db)):
     for city in city_names:
         rows = db.execute(
             text(
-                "SELECT type_id FROM type_stats WHERE city_name = :city_name ORDER BY type_score DESC"
+                "SELECT type_id, type_id_en, type_id_vi FROM type_stats WHERE city_name = :city_name ORDER BY type_score DESC"
             ),
             {"city_name": city},
         ).fetchall()
@@ -168,23 +212,16 @@ async def get_unique_top_types_per_city_json(db=Depends(get_db)):
         for row in rows:
             type_id = row[0]
             if type_id not in used_type_ids:
-                selected.append(type_id)
+                selected.append(
+                    (type_id, row[1], row[2])
+                )  # (type_id, type_id_en, type_id_vi)
                 used_type_ids.add(type_id)
             if len(selected) == 10:
                 break
-        # Prepare label_en for translation
-        for type_id in selected:
-            label_en = type_id.replace("_", " ")
-            all_items.append({"id": type_id, "labelEN": label_en})
-
-    async def translate(item):
-        label_vi = await translateEnToVi(item["labelEN"])
-        item["labelVI"] = label_vi
-        return item
-
-    all_items = all_items = await asyncio.gather(
-        *(translate(item) for item in all_items)
-    )
+        for type_id, type_id_en, type_id_vi in selected:
+            all_items.append(
+                {"id": type_id, "labelEN": type_id_en, "labelVI": type_id_vi}
+            )
 
     return all_items
 

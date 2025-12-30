@@ -1,19 +1,19 @@
 import { useState, useEffect } from "react";
-import { X, ChevronRight, ChevronLeft, BookOpen, CheckCircle2, Circle, Home, Settings, Map, Route, Save, Sparkles, User, Calendar, DollarSign, MapPin, Navigation, MessageSquare, Layout } from "lucide-react";
-import { t } from "../locales/translations";
+import { X, ChevronRight, ChevronLeft, BookOpen, CheckCircle2, Map, Route, Save, Sparkles, User, Calendar, DollarSign, MapPin, Navigation, MessageSquare, Layout } from "lucide-react";
+import { t, TranslationKey } from "../locales/translations";
 import { useThemeColors } from "../hooks/useThemeColors";
 
 interface TutorialStep {
   id: string;
-  titleKey: string;
-  descriptionKey: string;
+  titleKey: TranslationKey;
+  descriptionKey: TranslationKey;
   targetSelector: string;
   position: "top" | "bottom" | "left" | "right" | "center" | "top-left" | "top-right" | "bottom-left" | "bottom-right";
 }
 
 interface Chapter {
   id: string;
-  titleKey: string;
+  titleKey: TranslationKey;
   descriptionKey: string;
   icon: any;
   color: string;
@@ -758,8 +758,8 @@ export function UserManual({ isOpen, onClose, language, currentMode, onModeChang
                           {progress > 0 && progress < 100
                             ? t("continue", lang)
                             : progress === 100
-                            ? t("review", lang)
-                            : t("start", lang)}
+                              ? t("review", lang)
+                              : t("start", lang)}
                         </span>
                         <ChevronRight
                           className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1"

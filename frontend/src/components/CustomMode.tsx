@@ -13,48 +13,26 @@ import { ViewModePlacesGallery } from "./ViewModePlacesGallery";
 import { ViewModePlaceDetails } from "./ViewModePlaceDetails";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Textarea } from "./ui/textarea";
 import { Card } from "./ui/card";
 import {
-  Plus,
   Save,
-  X,
   Check,
   CalendarIcon,
-  ChevronUp,
-  ChevronDown,
-  Maximize2,
-  Minimize2,
-  Sparkles,
-  Waypoints,
   Loader2,
   NotebookPen,
   Users,
   MapPin,
 } from "lucide-react";
-import { DayPlan, Destination, CostItem } from "../types";
+import { DayPlan, Destination, Place } from "../types";
 import { toast } from "sonner";
-import { optimizeRoute } from "../utils/routeOptimizer";
-import { Calendar } from "./ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "./ui/popover";
 import { format, addDays, differenceInDays, set } from "date-fns";
 import { t } from "../locales/translations";
 import { useThemeColors } from "../hooks/useThemeColors";
-import { convertCurrency, convertAllDays } from "../utils/exchangerate";
-import { fetchNearbyPlaces, fetchPlacesData, generatePlaces, mapPlaceToDestination, savePlacesToBackend } from "../utils/serp";
-import { geocodeDestination } from "../utils/geocode";
-import { makeDestinationFromGeo } from "../utils/destinationFactory";
-import { sendLocationToBackend } from "../utils/geolocation";
-import { fetchItineraryWithGroq, detectAndExecuteGroqCommand } from "../utils/groq";
-import { parseAmount, detectCurrencyAndNormalizePrice } from "../utils/parseAmount"
+import { convertAllDays } from "../utils/exchangerate";
+import { fetchNearbyPlaces, generatePlaces, mapPlaceToDestination } from "../utils/serp";
 import { getOptimizedRoute } from "../utils/geocode";
 import { createTrip, updateTrip } from '../api.js';
-import { PlaceDetailsModal } from "./PlaceDetailsModal";
-import { map } from "leaflet";
+import { getPlaceById } from "../utils/serp";
 
 interface CustomModeProps {
   tripData: { name: string; days: DayPlan[], };
@@ -126,7 +104,9 @@ export function CustomMode({
   const [latestAIResult, setLatestAIResult] = useState<any>(null);
   const [AIMatches, setAIMatches] = useState<Destination[] | null>(null);
   const [showPlaceDetailsModal, setShowPlaceDetailsModal] = useState(false);
-  const [placeDetails, setPlaceDetails] = useState<Destination | null>(null);
+  const [placeDetails, setPlaceDetails] = useState<Place | null>(null);
+  const [detailedDestinations, setDetailedDestinations] = useState<Record<string, Place | null>>({});
+
   const handleTripDataChange = (newData: {
     name: string;
     days: DayPlan[];
@@ -415,7 +395,6 @@ export function CustomMode({
       case 'create_itinerary':
         if (payload && payload.itinerary) {
           const result = payload.itinerary;
-          console.log("AI Itinerary Result:", result);
 
           let parsedStart: Date | undefined;
           let parsedEnd: Date | undefined;
@@ -428,14 +407,10 @@ export function CustomMode({
             if (result.trip_info.start_day && !isNaN(Date.parse(result.trip_info.start_day))) {
               parsedStart = new Date(result.trip_info.start_day);
               setStartDate(parsedStart);
-              console.log("Parsing start day", result.trip_info.start_day);
-              console.log("Start day", parsedStart);
             }
             if (result.trip_info.end_day && !isNaN(Date.parse(result.trip_info.end_day))) {
               parsedEnd = new Date(result.trip_info.end_day);
               setEndDate(parsedEnd);
-              console.log("Parsing end day", result.trip_info.end_day);
-              console.log("End day", parsedEnd);
             }
           }
 
@@ -466,9 +441,8 @@ export function CustomMode({
             (result.valid_starting_point === undefined || result.valid_starting_point === true)
           ) {
             const { allPlaces, city, latitude, longitude } = await generatePlaces(result, userLocation);
-            console.log("Fetched places:", allPlaces);
             const mappedPlaces = allPlaces.map(place => {
-              const dest = mapPlaceToDestination(place, currency, onCurrencyToggle);
+              const dest = mapPlaceToDestination(place, currency, onCurrencyToggle, language);
               // Optionally add/override fields here
               return dest;
             });
@@ -519,7 +493,6 @@ export function CustomMode({
         break;
       }
       case 'add_new_day_after_current': {
-        console.log("Adding new day after current day:", selectedDay);
         addDayAfter(selectedDay);
         break;
       }
@@ -601,7 +574,6 @@ export function CustomMode({
       case 'delete_range_of_days': {
         const startDay = payload?.start_day;
         const endDay = payload?.end_day;
-        console.log("Deleting range of days:", startDay, endDay);
         if (startDay && endDay && !isNaN(Number(startDay)) && !isNaN(Number(endDay))) {
           const startIdx = Number(startDay) - 1;
           const endIdx = Number(endDay) - 1;
@@ -624,7 +596,6 @@ export function CustomMode({
 
       case 'search_new_destination': {
         const matches = payload?.matches;
-        console.log("AI Matches for new destination:", matches);
         setAIMatches(matches);
         break;
       }
@@ -677,7 +648,7 @@ export function CustomMode({
           if (addedDay && !isNaN(Number(addedDay))) {
             const day = localTripData.days.find(d => d.id === String(addedDay));
             if (day) {
-              const destination = mapPlaceToDestination(payload.destination, currency, onCurrencyToggle);
+              const destination = mapPlaceToDestination(payload.destination, currency, onCurrencyToggle, language);
               const updatedDestinations = [...day.destinations, destination];
               updateDay(day.id, {
                 ...day,
@@ -690,14 +661,12 @@ export function CustomMode({
         } break;
       }
       case 'add_new_destination': {
-        console.log("day to add new destination:", payload?.day);
-        console.log("destination to add:", payload?.destination);
         const addedDay = payload?.day;
         if (payload?.destination) {
           if (addedDay && !isNaN(Number(addedDay))) {
             const day = localTripData.days.find(d => d.id === String(addedDay));
             if (day) {
-              const destination = mapPlaceToDestination(payload.destination, currency, onCurrencyToggle);
+              const destination = mapPlaceToDestination(payload.destination, currency, onCurrencyToggle, language);
               const updatedDestinations = [...day.destinations, destination];
               updateDay(day.id, {
                 ...day,
@@ -720,7 +689,7 @@ export function CustomMode({
             const destIndex = day.destinations.findIndex(dest => dest.id === remove_id);
             if (destIndex !== -1) {
               // Write the new destination to the found index but with different id
-              const destination = mapPlaceToDestination(new_destination_full_place, currency, onCurrencyToggle);
+              const destination = mapPlaceToDestination(new_destination_full_place, currency, onCurrencyToggle, language);
               const updatedDestinations = [...day.destinations];
               updatedDestinations[destIndex] = destination;
               updateDay(day.id, {
@@ -748,7 +717,6 @@ export function CustomMode({
       }
       case 'find_information_for_a_place': {
         const fullPlace = payload?.place_info;
-        console.log("Full place info from AI:", fullPlace);
         setAIMatches(fullPlace ? [fullPlace] : []);
         setShowPlaceDetailsModal(true);
         break;
@@ -865,6 +833,24 @@ export function CustomMode({
       />
     );
   }
+
+  useEffect(() => {
+    if (!selectedPlaceInViewMode) return;
+    getPlaceById(selectedPlaceInViewMode.place_id).then(setPlaceDetails);
+  }, [selectedPlaceInViewMode]);
+
+  useEffect(() => {
+    async function fetchDetails() {
+      const details: Record<string, Place | null> = {};
+      for (const dest of currentDay.destinations) {
+        if (!detailedDestinations[dest.id]) {
+          details[dest.id] = await getPlaceById(dest.id);
+        }
+      }
+      setDetailedDestinations(prev => ({ ...prev, ...details }));
+    }
+    fetchDetails();
+  }, [currentDay.destinations]);
 
   // View Mode Layout: Map (50%) | ViewModePlacesGallery & ViewModePlaceDetails (50%), No ChatBox
   if (mode === "view") {
@@ -1001,6 +987,7 @@ export function CustomMode({
             place={selectedPlaceInViewMode}
             language={language}
             currency={currency}
+            detailedDestination={placeDetails}
           />
         </div>
 
@@ -1023,19 +1010,21 @@ export function CustomMode({
         {/* Left: Place Search - Full Height */}
         <div className="flex-1 relative h-full min-w-0">
           <PlaceSearchView
-            onAddDestination={async (place: Destination) => {
+            onAddDestination={async (place: any) => {
               const day = localTripData.days.find((d) => d.id === selectedDay);
               if (!day) return;
 
+              console.log("dest place id:", place.place_id);
               // Check for duplicate place_id
-              if (day.destinations.some(dest => dest.place_id === place.id)) {
+              if (day.destinations.some(dest => dest.id === place.place_id)) {
                 toast.error(t("destinationAlreadyExists", lang));
                 return;
               }
-
+              // Convert place to Destination type
+              const destination = mapPlaceToDestination(place, currency, onCurrencyToggle, language);
               updateDay(selectedDay, {
                 ...day,
-                destinations: [...day.destinations, place],
+                destinations: [...day.destinations, destination],
                 optimizedRoute: [],
               });
               toast.success(t("destinationAdded", lang));
@@ -1246,6 +1235,7 @@ export function CustomMode({
                 onCurrencyToggle={onCurrencyToggle}
                 language={language}
                 onDestinationClick={(destination) => setFocusedDestination(destination)}
+                detailedDestinations={detailedDestinations}
               />
             ) : (
               <AllDaysView

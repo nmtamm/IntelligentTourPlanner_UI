@@ -1,7 +1,7 @@
 import { useState, useEffect, React } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
-import { ArrowLeft, Calendar, MapPin, DollarSign, Trash2, Plus, Loader2, Currency, Wallet } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Trash2, Plus, Loader2, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { DayPlan, Destination } from '../types';
 import { getTrips, deleteTrip } from '../api.js';
@@ -248,9 +248,7 @@ export function SavedPlans({ currentUser, onBack, onLoadPlan, onCreateNew, curre
       return;
     }
     try {
-      console.log('Deleting all saved plans...');
       for (const plan of plans) {
-        console.log(`Deleting plan ID: ${plan.id}`);
         await deleteTrip(plan.id, token);
       }
       loadPlans();

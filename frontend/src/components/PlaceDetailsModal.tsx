@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { X, MapPin, Star, Clock, DollarSign, ExternalLink, Trash2, Wallet } from "lucide-react";
+import { X, MapPin, Star, Clock, ExternalLink, Trash2, Wallet } from "lucide-react";
 import { Button } from "./ui/button";
-import { Destination } from "../types";
+import { Destination, Place } from "../types";
 import { t } from "../locales/translations";
 import { useThemeColors } from "../hooks/useThemeColors";
-import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvent, Polyline } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import 'leaflet/dist/leaflet.css';
-import { getPlaceById } from "../utils/serp";
 import { parseAmount } from "../utils/parseAmount";
 interface PlaceDetailsModalProps {
   place: Destination | null;
@@ -19,8 +18,8 @@ interface PlaceDetailsModalProps {
   showDeleteButton?: boolean;
   currency: "USD" | "VND";
   currentDayNumber?: number;
+  detailedDestination?: Place | null;
 }
-import { translateEnToVi, translateViToEn, detectLanguage } from "../utils/gtranslate";
 export function PlaceDetailsModal({
   place,
   isOpen,
@@ -32,12 +31,12 @@ export function PlaceDetailsModal({
   showDeleteButton = false,
   currency,
   currentDayNumber,
+  detailedDestination
 }: PlaceDetailsModalProps) {
   if (!isOpen || !place) return null;
 
   const lang = language.toLowerCase() as "en" | "vi";
   const { primary, secondary, light } = useThemeColors();
-  const [detailedDestination, setDetailedDestination] = useState<Destination | null>(null);
   const currencySymbol = currency === 'USD' ? 'USD' : 'VND';
   const [translatedDetails, setTranslatedDetails] = useState<Record<string, string>>({});
   // Close on ESC key
@@ -54,15 +53,6 @@ export function PlaceDetailsModal({
       document.body.style.overflow = "unset";
     };
   }, [isOpen, onClose]);
-
-  useEffect(() => {
-    let isMounted = true;
-    getPlaceById(place.id).then((result) => {
-      if (isMounted) setDetailedDestination(result);
-      console.log("Fetched detailed destination:", detailedDestination);
-    });
-    return () => { isMounted = false; };
-  }, [place.id]);
 
   const hasValidCoords =
     typeof place.latitude === "number" &&
@@ -120,7 +110,7 @@ export function PlaceDetailsModal({
               {detailedDestination?.thumbnail && (
                 <div className="w-full h-64 rounded-xl overflow-hidden shrink-0">
                   <img
-                    src={detailedDestination.thumbnail}
+                    src={`/assets/${detailedDestination.place_id}.jpg`}
                     alt={place.name}
                     className="w-full h-full object-cover"
                   />
@@ -142,7 +132,15 @@ export function PlaceDetailsModal({
                     />
                     {hasValidCoords && (
                       <Marker position={mapCenter}>
-                        <Popup>{place.name}</Popup>
+                        <Popup>
+                          {language === "EN"
+                            ? (detailedDestination && Array.isArray(detailedDestination.en_names)
+                              ? detailedDestination.en_names[0]
+                              : (detailedDestination?.en_names || place.name))
+                            : (detailedDestination && Array.isArray(detailedDestination.vi_names)
+                              ? detailedDestination.vi_names[0]
+                              : (detailedDestination?.vi_names || place.name))}
+                        </Popup>
                       </Marker>
                     )}
                   </MapContainer>
@@ -154,10 +152,18 @@ export function PlaceDetailsModal({
             <div className="w-full md:w-1/2 p-6 overflow-y-auto h-full">
               <div className="space-y-4">
                 {/* Place Name */}
-                <h2 className="text-gray-900 text-2xl">{place.name}</h2>
+                <h2 className="text-gray-900 text-2xl">
+                  {language === "EN"
+                    ? (detailedDestination && Array.isArray(detailedDestination.en_names)
+                      ? detailedDestination.en_names[0]
+                      : (detailedDestination?.en_names || place.name))
+                    : (detailedDestination && Array.isArray(detailedDestination.vi_names)
+                      ? detailedDestination.vi_names[0]
+                      : (detailedDestination?.vi_names || place.name))}
+                </h2>
 
                 {/* Place Type */}
-                {detailedDestination?.type && (
+                {language === "EN" && detailedDestination?.best_type_id_en && (
                   <div>
                     <span
                       className="inline-block text-sm px-3 py-1.5 rounded-lg"
@@ -166,7 +172,21 @@ export function PlaceDetailsModal({
                         color: primary,
                       }}
                     >
-                      {detailedDestination.type}
+                      {detailedDestination.best_type_id_en.charAt(0).toUpperCase() + detailedDestination.best_type_id_en.slice(1)}
+                    </span>
+                  </div>
+                )}
+
+                {language === "VI" && detailedDestination?.best_type_id_vi && (
+                  <div>
+                    <span
+                      className="inline-block text-sm px-3 py-1.5 rounded-lg"
+                      style={{
+                        backgroundColor: light,
+                        color: primary,
+                      }}
+                    >
+                      {detailedDestination.best_type_id_vi.charAt(0).toUpperCase() + detailedDestination.best_type_id_vi.slice(1)}
                     </span>
                   </div>
                 )}
@@ -188,15 +208,15 @@ export function PlaceDetailsModal({
                           const rating = detailedDestination?.rating !== undefined && detailedDestination?.rating !== null
                             ? detailedDestination.rating
                             : 4.5;
-                          
+
                           // Calculate fill percentage for this star (0-100)
                           const fillPercent = Math.max(0, Math.min(100, (rating - index) * 100));
-                          
+
                           // Determine star state
                           const isFilled = fillPercent === 100;
                           const isEmpty = fillPercent === 0;
                           const isPartial = fillPercent > 0 && fillPercent < 100;
-          
+
                           return (
                             <div key={starPosition} className="relative w-4 h-4">
                               {isPartial ? (
@@ -210,7 +230,7 @@ export function PlaceDetailsModal({
                                     strokeWidth={1.5}
                                   />
                                   {/* Overlay: Yellow star clipped to exact percentage */}
-                                  <div 
+                                  <div
                                     className="absolute inset-0 overflow-hidden transition-all duration-150"
                                     style={{
                                       width: `${fillPercent}%`,
@@ -265,12 +285,14 @@ export function PlaceDetailsModal({
                   <div className="flex items-center gap-3 text-gray-700">
                     <Clock className="w-5 h-5 shrink-0" style={{ color: primary }} />
                     <span className="text-sm">
-                      {detailedDestination.hours.split("·").map((part, idx) => (
-                        <React.Fragment key={idx}>
-                          {part.trim()}
-                          {idx < detailedDestination.hours.split("·").length - 1 && <br />}
-                        </React.Fragment>
-                      ))}
+                      {(detailedDestination.hours ?? "")
+                        .split("·")
+                        .map((part, idx, arr) => (
+                          <React.Fragment key={idx}>
+                            {part.trim()}
+                            {idx < arr.length - 1 && <br />}
+                          </React.Fragment>
+                        ))}
                     </span>
                   </div>
                 )}
@@ -287,12 +309,14 @@ export function PlaceDetailsModal({
                     })()} {currencySymbol}
                   </div>
                 )}
-                {detailedDestination?.place_detail && (
+
+                {/* Detailed Information */}
+                {language === "EN" && detailedDestination?.place_detail_en && (
                   <div className="flex flex-col gap-3 text-gray-700">
                     <div style={{ color: "#2563eb", fontWeight: 700, fontSize: 18, marginBottom: 4 }}>
-                      Detailed
+                      Details
                     </div>
-                    {Object.entries(detailedDestination.place_detail).map(([field, content]) => (
+                    {Object.entries(detailedDestination.place_detail_en).map(([field, content]) => (
                       <div key={field} style={{ marginBottom: 12 }}>
                         <div style={{ color: "#2563eb", fontWeight: 600 }}>
                           {field.charAt(0).toUpperCase() + field.slice(1)}
@@ -302,6 +326,22 @@ export function PlaceDetailsModal({
                     ))}
                   </div>
                 )}
+                {language === "VI" && detailedDestination?.place_detail_vi && (
+                  <div className="flex flex-col gap-3 text-gray-700">
+                    <div style={{ color: "#2563eb", fontWeight: 700, fontSize: 18, marginBottom: 4 }}>
+                      Thông tin chi tiết
+                    </div>
+                    {Object.entries(detailedDestination.place_detail_vi).map(([field, content]) => (
+                      <div key={field} style={{ marginBottom: 12 }}>
+                        <div style={{ color: "#2563eb", fontWeight: 600 }}>
+                          {field.charAt(0).toUpperCase() + field.slice(1)}
+                        </div>
+                        <div style={{ color: "#111" }}>{content}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {/* Action Buttons */}
                 <div className="flex gap-3 pt-4">
                   {/* Website Link */}
@@ -348,10 +388,10 @@ export function PlaceDetailsModal({
                         e.currentTarget.style.boxShadow = "none";
                       }}
                     >
-                      {currentDayNumber 
-                        ? (language === "EN" 
-                            ? `Add to Day ${currentDayNumber}` 
-                            : `Thêm vào Ngày ${currentDayNumber}`)
+                      {currentDayNumber
+                        ? (language === "EN"
+                          ? `Add to Day ${currentDayNumber}`
+                          : `Thêm vào Ngày ${currentDayNumber}`)
                         : t("addToDay", lang)
                       }
                     </Button>

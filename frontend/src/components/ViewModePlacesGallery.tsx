@@ -1,9 +1,8 @@
 import { Card } from "./ui/card";
-import { DayPlan, Destination } from "../types";
+import { DayPlan, Destination, Place } from "../types";
 import { t } from "../locales/translations";
 import { useThemeColors } from "../hooks/useThemeColors";
-import { ImageWithFallback } from "./figma/ImageWithFallback";
-import { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { getPlaceById } from "../utils/serp";
 interface ViewModePlacesGalleryProps {
   days: DayPlan[];
@@ -21,6 +20,36 @@ function preloadImage(src: string): Promise<void> {
     img.onerror = reject;
     img.src = src;
   });
+}
+function PlaceName({ place, language }: { place: Destination, language: "EN" | "VI" }) {
+  const [detailed, setDetailed] = useState<Place | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    getPlaceById(place.id).then((fullPlace) => {
+      if (mounted) setDetailed(fullPlace);
+    });
+    return () => { mounted = false; };
+  }, [place.id]);
+
+  if (language === "EN") {
+    return (
+      <>
+        {Array.isArray(detailed?.en_names)
+          ? detailed?.en_names[0]
+          : (detailed?.en_names || detailed?.title)}
+      </>
+    );
+  } else {
+    return (
+      <>
+        {Array.isArray(detailed?.vi_names)
+          ? detailed?.vi_names[0]
+          : (detailed?.vi_names || detailed?.title)}
+      </>
+    );
+  }
+
 }
 export function ViewModePlacesGallery({
   days,
@@ -204,7 +233,7 @@ export function ViewModePlacesGallery({
                       WebkitLineClamp: selectedPlaceId === place.id ? 3 : 1,
                     }}
                   >
-                    {place.name}
+                    <PlaceName place={place} language={language} />
                   </p>
                 </div>
               </button>

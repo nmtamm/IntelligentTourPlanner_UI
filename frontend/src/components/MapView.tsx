@@ -1,18 +1,15 @@
 import React, { useState, useEffect, useRef, } from "react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
-import { Input } from "./ui/input";
 import { DayPlan, Destination } from "../types";
-import { MapPin, Navigation, X, Map, List, Plus, Loader2, Search, Star, ExternalLink, Clock, DollarSign, Trash2 } from "lucide-react";
+import { Navigation, Map, List, Loader2 } from "lucide-react";
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvent, Polyline } from "react-leaflet";
 import 'leaflet/dist/leaflet.css';
 import polyline from '@mapbox/polyline';
 import { reverseGeocode } from "../utils/reverseGeocode";
-import { parseAmount } from "../utils/parseAmount";
 import { toast } from "sonner";
 import { t } from "../locales/translations";
 import { useThemeColors } from "../hooks/useThemeColors";
-import { handleSearch } from "../utils/serp";
 
 interface MapViewProps {
   days: DayPlan[];

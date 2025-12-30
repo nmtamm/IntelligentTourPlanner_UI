@@ -1,13 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { Card } from "./ui/card";
 import { Search, Loader2, MapPin, Star, Plus, MapPinPlus } from "lucide-react";
-import { Destination } from "../types";
+import { Destination, Place } from "../types";
 import { t } from "../locales/translations";
 import { useThemeColors } from "../hooks/useThemeColors";
 import { PlaceDetailsModal } from "./PlaceDetailsModal";
-import { handleSearch, getPlaceById, fetchFilteredPlaces, fetchNearbyPlaces } from "../utils/serp";
+import { handleSearch, getPlaceById, fetchNearbyPlaces } from "../utils/serp";
 import { fetchUniqueTopTypes } from "../utils/serp";
-import { detectCurrencyAndNormalizePrice } from "../utils/parseAmount";
 import { mapPlaceToDestination } from "../utils/serp";
 interface PlaceSearchViewProps {
   onAddDestination: (place: Destination) => Promise<void>;
@@ -51,12 +50,12 @@ export function PlaceSearchView({
   const [selectedPlaceId, setSelectedPlaceId] = useState(null);
   const [filterTypes, setFilterTypes] = useState<any[]>([]);
   const [allImagesLoaded, setAllImagesLoaded] = useState(false);
+  const [detailedDestination, setDetailedDestination] = useState<Place | null>(null);
   const onSearchInputChange = async (value: string) => {
     setSearchQuery(value);
     if (value.trim()) {
       setIsSearching(true);
       const results = await handleSearch(value);
-      console.log('Search results:', results);
       const fullPlaces = await Promise.all(
         results.map(async (place: any) => {
           const fullPlace = await getPlaceById(place.place_id);
@@ -70,18 +69,17 @@ export function PlaceSearchView({
     }
   };
 
-  const handlePlaceClick = (place: Destination) => {
-    const destination = mapPlaceToDestination(place, currency, onCurrencyToggle);
+  const handlePlaceClick = async (place: any) => {
+    // place here is from the database
+    // destination here is mapped to Destination type
+    const destination = mapPlaceToDestination(place, currency, onCurrencyToggle, language);
     setSelectedPlace(destination);
+    setDetailedDestination(place);
     setIsModalOpen(true);
   };
 
   const handleAddToDay = async (place: any) => {
-    // Fetch full place info by place_id
-    const fullPlace = await getPlaceById(place.place_id);
-    if (!fullPlace) return;
-    const destination = mapPlaceToDestination(fullPlace, currency, onCurrencyToggle);
-    await onAddDestination(destination);
+    await onAddDestination(place);
     setIsModalOpen(false);
     setSelectedPlace(null);
     setSearchQuery("");
@@ -161,7 +159,7 @@ export function PlaceSearchView({
   }, [selectedFilter, cityCoordinates, userLocation]);
   useEffect(() => {
     if (AIMatches && AIMatches.length > 0 && shouldPopUp) {
-      const place = mapPlaceToDestination(AIMatches[0], currency, onCurrencyToggle);
+      const place = mapPlaceToDestination(AIMatches[0], currency, onCurrencyToggle, language);
       setSelectedPlace(place);
       setIsModalOpen(true);
     }
@@ -364,8 +362,12 @@ export function PlaceSearchView({
                       <div className="space-y-2">
                         {/* Name & Type */}
                         <div className="flex items-start justify-between gap-2">
-                          <h4 className="text-gray-900 font-medium break-words">{place.title}</h4>
-                          {place.type && (
+                          <h4 className="text-gray-900 font-medium break-words">
+                            {language === "EN"
+                              ? (Array.isArray(place.en_names) ? place.en_names[0] : (place.en_names || place.title))
+                              : (Array.isArray(place.vi_names) ? place.vi_names[0] : (place.vi_names || place.title))}
+                          </h4>
+                          {language === "EN" && place.best_type_id_en && (
                             <span
                               className="text-xs px-2 py-1 rounded-md shrink-0"
                               style={{
@@ -373,7 +375,18 @@ export function PlaceSearchView({
                                 color: primary,
                               }}
                             >
-                              {place.type}
+                              {place.best_type_id_en.charAt(0).toUpperCase() + place.best_type_id_en.slice(1)}
+                            </span>
+                          )}
+                          {language === "VI" && place.best_type_id_vi && (
+                            <span
+                              className="text-xs px-2 py-1 rounded-md shrink-0"
+                              style={{
+                                backgroundColor: light,
+                                color: primary,
+                              }}
+                            >
+                              {place.best_type_id_vi.charAt(0).toUpperCase() + place.best_type_id_vi.slice(1)}
                             </span>
                           )}
                         </div>
@@ -447,6 +460,7 @@ export function PlaceSearchView({
         showAddButton={true}
         currency={currency}
         currentDayNumber={currentDayNumber}
+        detailedDestination={detailedDestination}
       />
     </>
   );

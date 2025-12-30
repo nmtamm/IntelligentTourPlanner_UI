@@ -278,15 +278,6 @@
             "response_en": "Relevant destinations have been suggested based on your request",
             "error_response_vi": "Không thể trích xuất loại từ yêu cầu. Vui lòng thử lại.",
             "error_response_en": "Failed to extract type from prompt. Please try again."
-        },
-        {
-            "name": "find_information_for_a_place",
-            "natural_expression": "find information for a place",
-            "description": "Retrieve detailed information about a specific place.",
-            "response_vi": "Đã tìm thấy thông tin chi tiết về địa điểm",
-            "response_en": "Detailed information about the place found",
-            "error_response_vi": "Không thể tìm thông tin về địa điểm. Vui lòng thử lại.",
-            "error_response_en": "Failed to find information about the place. Please try again."
         }
     ]
 }

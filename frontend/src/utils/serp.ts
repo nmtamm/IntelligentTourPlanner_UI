@@ -61,8 +61,6 @@ export async function generatePlaces(result, userLocation) {
         longitude = userLocation?.longitude || 0;
     }
 
-    console.log("Using coordinates:", latitude, longitude);
-
     // Fetch for non-additional categories
     for (let i = 0; i < nonAdditionalItems.length; i++) {
         const item = nonAdditionalItems[i];
@@ -115,7 +113,6 @@ export async function generatePlaces(result, userLocation) {
 
 export async function fetchPlacesData() {
     const result = await fetchTouristCategories();
-    console.log("Fetched Categories:", result);
 
     // Dinh Doc Lap
     // const latitude = 10.7770348;
@@ -142,16 +139,13 @@ export async function fetchPlacesData() {
     const allPlaces: any[] = [];
     for (const category of result) {
         const places = await fetchSerpLocalResults(category, ll);
-        console.log(`Category: ${category}, Places Found: ${places.length}`);
         allPlaces.push(...places);
     }
 
-    console.log(`Total Places Fetched: ${allPlaces.length}`);
     return allPlaces;
 }
 
 export async function savePlacesToBackend(allPlaces: any[]) {
-    console.log("Sending places to backend:", allPlaces);
     const response = await fetch(`${API_HOST}/api/places/save`, {
         method: 'POST',
         headers: {
@@ -196,14 +190,33 @@ export async function fetchUniqueTopTypes() {
     return await response.json();
 }
 
-export function mapPlaceToDestination(place: any, currency: 'USD' | 'VND', onCurrencyToggle: () => void): Destination {
+export function mapPlaceToDestination(
+    place: any,
+    currency: 'USD' | 'VND',
+    onCurrencyToggle: () => void,
+    language: "EN" | "VI"
+): Destination {
     const { detectedCurrency, normalizedPrice } = detectCurrencyAndNormalizePrice(place.price, currency);
     if (detectedCurrency !== currency) {
         onCurrencyToggle();
     }
+
+    // Use the correct name field based on language
+    let name = "";
+    if (language === "EN") {
+        // If en_name is a JSON array or string
+        name = Array.isArray(place.en_name)
+            ? place.en_name[0]
+            : (place.en_name || place.title);
+    } else {
+        name = Array.isArray(place.vi_name)
+            ? place.vi_name[0]
+            : (place.vi_name || place.title);
+    }
+
     return {
         id: place.place_id,
-        name: place.title,
+        name: name,
         address: place.address || "",
         costs: [{
             id: `${Date.now()}-0`,
